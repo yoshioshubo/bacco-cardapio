@@ -257,31 +257,43 @@ async function verificarSenha(){
   </div>
 </header>
 
-<div class="resumo">
+<!-- BARRA DE META — sempre visível -->
+<div style="background:#1a0e09;border-bottom:2px solid var(--cor-accent);padding:10px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:8px 16px">
+    <span style="font-size:11px;color:#c9a84c;font-weight:700;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">🎯 Meta de Faturamento</span>
+    <span style="color:#666;font-size:18px">|</span>
+    <span style="font-size:11px;color:#aaa;white-space:nowrap">R$</span>
+    <input id="meta-fat-global" type="number" value="100000" step="5000" min="10000"
+      style="width:120px;background:transparent;border:none;border-bottom:2px solid var(--cor-accent);color:#fff;font-size:20px;font-weight:800;text-align:center;outline:none;padding:2px 4px;"
+      oninput="aplicarMetaGlobal()"
+      title="Digite a meta de receita mensal">
+    <span style="font-size:11px;color:#aaa;white-space:nowrap">CMV máx.</span>
+    <input id="meta-cmv-global" type="number" value="25" step="1" min="10" max="50"
+      style="width:52px;background:transparent;border:none;border-bottom:2px solid #aaa;color:#fff;font-size:18px;font-weight:700;text-align:center;outline:none;padding:2px 4px;"
+      oninput="aplicarMetaGlobal()">
+    <span style="font-size:14px;color:#aaa">%</span>
+    <div id="meta-status" style="font-size:10px;color:#aaa;white-space:nowrap">↵ recalcula automaticamente</div>
+  </div>
+  <div class="resumo-sep"></div>
   <div class="resumo-item">
-    <div class="lbl">CMV Ponderado (mix)</div>
+    <div class="lbl">CMV Atual (mix)</div>
     <div class="val" id="cmv-pond">—</div>
   </div>
   <div class="resumo-sep"></div>
   <div class="resumo-item">
-    <div class="lbl">Meta CMV</div>
-    <div class="val" style="color:#888">25,0%</div>
-  </div>
-  <div class="resumo-sep"></div>
-  <div class="resumo-item">
-    <div class="lbl">Receita Mensal Est.</div>
+    <div class="lbl">Receita Est./mês</div>
     <div class="val" id="rec-total" style="color:#ddd">—</div>
   </div>
   <div class="resumo-item">
-    <div class="lbl">Custo Mensal Est.</div>
+    <div class="lbl">Custo Est./mês</div>
     <div class="val" id="cus-total" style="color:#ddd">—</div>
   </div>
   <div class="resumo-item">
-    <div class="lbl">Lucro Bruto Mensal</div>
+    <div class="lbl">Lucro Bruto/mês</div>
     <div class="val" id="luc-total" style="color:#2ecc71">—</div>
   </div>
   <div class="resumo-item hide-mob">
-    <div class="lbl">Porções / Mês (total)</div>
+    <div class="lbl">Porções/mês</div>
     <div class="val" id="porcoes-total" style="color:#ddd">—</div>
   </div>
   <div class="resumo-sep"></div>
@@ -291,7 +303,7 @@ async function verificarSenha(){
   </div>
 </div>
 <div class="alerta-cmv" id="alerta-cmv">
-  ⚠ CMV ponderado acima da meta de 25% — ajuste o mix de vendas ou os preços de venda para reequilibrar.
+  ⚠ CMV ponderado acima da meta — ajuste a meta ou os preços de venda.
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -1194,6 +1206,77 @@ function fecharOverlay(id){ document.getElementById(id).classList.remove('aberto
     if(e.target===this) this.classList.remove('aberto');
   });
 });
+
+// ================================================================
+// META GLOBAL — recalcula e aplica mix automaticamente
+// ================================================================
+let _metaTimer = null;
+function aplicarMetaGlobal() {
+  // Debounce: espera 600ms depois da última digitação
+  clearTimeout(_metaTimer);
+  const el = document.getElementById('meta-status');
+  if(el) el.textContent = '⏳ calculando...';
+  _metaTimer = setTimeout(() => _executarMetaGlobal(), 600);
+}
+
+function _executarMetaGlobal() {
+  const targetRev = parseFloat(document.getElementById('meta-fat-global')?.value) || 100000;
+  const targetCMV = parseFloat(document.getElementById('meta-cmv-global')?.value) / 100 || 0.25;
+
+  // Receita atual com mix atual
+  let recAtual = 0;
+  cats.forEach(c => c.pratos.forEach(p => { recAtual += p.pv * p.mv; }));
+  if (recAtual <= 0) return;
+
+  const scale = targetRev / recAtual;
+
+  // Busca binária para alpha que atinge CMV-alvo
+  let alpha = 0, lo = -3, hi = 8;
+  for (let i = 0; i < 80; i++) {
+    alpha = (lo + hi) / 2;
+    let tR = 0, tC = 0;
+    cats.forEach(c => c.pratos.forEach(p => {
+      const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
+      const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
+      const n = Math.max(1, Math.round(p.mv * scale * adj));
+      tR += p.pv * n; tC += calcCusto(p) * n;
+    }));
+    if (tR > 0 && tC / tR > targetCMV) hi = alpha; else lo = alpha;
+  }
+
+  // Aplicar quantidades calculadas
+  let totRev = 0, totCost = 0, totN = 0;
+  cats.forEach(c => c.pratos.forEach(p => {
+    const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
+    const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
+    const n = Math.max(1, Math.round(p.mv * scale * adj));
+    p.mv = n;
+    totRev  += p.pv * n;
+    totCost += calcCusto(p) * n;
+    totN    += n;
+    // Atualizar input na tabela
+    const inp = document.getElementById('mv-' + p.id);
+    if (inp) inp.value = n;
+  }));
+
+  recalcTudo();
+  atualizarResumo();
+  recalcRodapesCats();
+
+  // Atualizar aba consolidado se estiver aberta
+  if (document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
+  // Atualizar aba meta se estiver aberta
+  if (document.getElementById('cat-meta')?.classList.contains('ativo')) calcularMeta();
+
+  // Feedback
+  const cmvFinal = totRev > 0 ? totCost / totRev : 0;
+  const el = document.getElementById('meta-status');
+  if (el) {
+    el.textContent = `✅ Mix aplicado — ${totN} porções · CMV ${FP(cmvFinal)}`;
+    el.style.color = cmvCls(cmvFinal) === 'ok' ? '#2ecc71' : '#e67e22';
+    setTimeout(() => { if(el){ el.textContent = '↵ recalcula automaticamente'; el.style.color = '#aaa'; } }, 4000);
+  }
+}
 
 // INIT
 render();
