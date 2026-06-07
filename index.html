@@ -258,22 +258,42 @@ async function verificarSenha(){
 </header>
 
 <!-- BARRA DE META — sempre visível -->
-<div style="background:#1a0e09;border-bottom:2px solid var(--cor-accent);padding:10px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-  <div style="display:flex;align-items:center;gap:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:8px 16px">
-    <span style="font-size:11px;color:#c9a84c;font-weight:700;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">🎯 Meta de Faturamento</span>
-    <span style="color:#666;font-size:18px">|</span>
-    <span style="font-size:11px;color:#aaa;white-space:nowrap">R$</span>
-    <input id="meta-fat-global" type="number" value="100000" step="5000" min="10000"
-      style="width:120px;background:transparent;border:none;border-bottom:2px solid var(--cor-accent);color:#fff;font-size:20px;font-weight:800;text-align:center;outline:none;padding:2px 4px;"
-      oninput="aplicarMetaGlobal()"
-      title="Digite a meta de receita mensal">
-    <span style="font-size:11px;color:#aaa;white-space:nowrap">CMV máx.</span>
-    <input id="meta-cmv-global" type="number" value="25" step="1" min="10" max="50"
-      style="width:52px;background:transparent;border:none;border-bottom:2px solid #aaa;color:#fff;font-size:18px;font-weight:700;text-align:center;outline:none;padding:2px 4px;"
-      oninput="aplicarMetaGlobal()">
-    <span style="font-size:14px;color:#aaa">%</span>
-    <div id="meta-status" style="font-size:10px;color:#aaa;white-space:nowrap">↵ recalcula automaticamente</div>
+<div style="background:#1a0e09;border-bottom:2px solid var(--cor-accent);padding:10px 28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+
+  <!-- BLOCO METAS -->
+  <div style="display:flex;align-items:center;gap:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:10px;color:#c9a84c;font-weight:700;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">🎯 Metas</span>
+    <span style="color:#444;font-size:16px">|</span>
+
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">Faturamento R$</span>
+      <input id="meta-fat-global" type="number" value="100000" step="5000" min="10000"
+        style="width:110px;background:transparent;border:none;border-bottom:2px solid var(--cor-accent);color:#fff;font-size:19px;font-weight:800;text-align:center;outline:none;padding:1px 2px;"
+        oninput="aplicarMetaGlobal();atuTicketAlvo()">
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">Pessoas/mês</span>
+      <input id="meta-pessoas-global" type="number" value="625" step="25" min="1"
+        style="width:72px;background:transparent;border:none;border-bottom:2px solid #6a9;color:#fff;font-size:19px;font-weight:800;text-align:center;outline:none;padding:1px 2px;"
+        oninput="atuTicketAlvo()">
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">CMV máx. %</span>
+      <input id="meta-cmv-global" type="number" value="25" step="1" min="10" max="50"
+        style="width:46px;background:transparent;border:none;border-bottom:2px solid #aaa;color:#fff;font-size:19px;font-weight:700;text-align:center;outline:none;padding:1px 2px;"
+        oninput="aplicarMetaGlobal()">
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(201,168,76,0.15);border-radius:6px;padding:4px 10px;">
+      <span style="font-size:9px;color:#c9a84c;text-transform:uppercase;letter-spacing:.5px">Ticket Alvo</span>
+      <span id="ticket-alvo-display" style="font-size:19px;font-weight:800;color:#c9a84c">R$ 160</span>
+    </div>
+
+    <div id="meta-status" style="font-size:10px;color:#aaa;white-space:nowrap;align-self:center">↵ recalcula ao digitar</div>
   </div>
+
   <div class="resumo-sep"></div>
   <div class="resumo-item">
     <div class="lbl">CMV Atual (mix)</div>
@@ -289,7 +309,7 @@ async function verificarSenha(){
     <div class="val" id="cus-total" style="color:#ddd">—</div>
   </div>
   <div class="resumo-item">
-    <div class="lbl">Lucro Bruto/mês</div>
+    <div class="lbl">Margem de Contribuição/mês</div>
     <div class="val" id="luc-total" style="color:#2ecc71">—</div>
   </div>
   <div class="resumo-item hide-mob">
@@ -298,7 +318,7 @@ async function verificarSenha(){
   </div>
   <div class="resumo-sep"></div>
   <div class="resumo-item">
-    <div class="lbl">Ticket Médio</div>
+    <div class="lbl">Ticket Médio Real</div>
     <div class="val" id="ticket-med" style="color:#ddd">—</div>
   </div>
 </div>
@@ -856,14 +876,13 @@ function pratoById(id){
 // RESUMO GLOBAL
 // ================================================================
 function atualizarResumo(){
-  let totCusto=0, totRec=0, totPorcoes=0, totRec2=0;
+  let totCusto=0, totRec=0, totPorcoes=0;
   for(const c of cats) for(const p of c.pratos){
     const cu = calcCusto(p);
     const mv = p.mv||0;
     totCusto += cu*mv;
     totRec   += p.pv*mv;
     totPorcoes += mv;
-    totRec2  += p.pv;
   }
   const cmvP = totRec>0 ? totCusto/totRec : 0;
   const elC = document.getElementById('cmv-pond');
@@ -873,10 +892,18 @@ function atualizarResumo(){
   document.getElementById('cus-total').textContent = FR(totCusto);
   document.getElementById('luc-total').textContent = FR(totRec-totCusto);
   document.getElementById('porcoes-total').textContent = totPorcoes.toLocaleString('pt-BR');
-  const nPratos = cats.reduce((s,c)=>s+c.pratos.length,0);
-  document.getElementById('ticket-med').textContent = FR(totRec2/nPratos);
+  // Ticket médio real = receita / pessoas definidas
+  const pessoas = parseFloat(document.getElementById('meta-pessoas-global')?.value)||1;
+  document.getElementById('ticket-med').textContent = FR(totRec/pessoas);
   const al = document.getElementById('alerta-cmv');
   al.classList.toggle('visivel', cmvP>0.255);
+}
+
+function atuTicketAlvo(){
+  const fat = parseFloat(document.getElementById('meta-fat-global')?.value)||100000;
+  const pes = parseFloat(document.getElementById('meta-pessoas-global')?.value)||1;
+  const el  = document.getElementById('ticket-alvo-display');
+  if(el) el.textContent = FR(fat/pes);
 }
 
 // ================================================================
@@ -1076,7 +1103,7 @@ function abrirFicha(id){
           <div class="val">R$ <input type="number" id="ft-pv-${id}" value="${p.pv.toFixed(2)}" step="1"
             onchange="atuPrecoFicha('${id}',this.value)" style="width:70px;font-size:15px;font-weight:700;border:1px solid #ccc;border-radius:3px;padding:2px 5px;"></div>
         </div>
-        <div class="ft-res-item"><div class="lbl">Lucro Bruto</div><div class="val" id="ft-mg-${id}">R$ ${F2(mg)}</div></div>
+        <div class="ft-res-item"><div class="lbl">Margem de Contribuição</div><div class="val" id="ft-mg-${id}">R$ ${F2(mg)}</div></div>
         <div class="ft-res-item"><div class="lbl">CMV%</div><div class="val ${cmvCls(cmv)}" id="ft-cmv-${id}">${FP(cmv)}</div></div>
       </div>
       <div class="mgrid">
@@ -1207,67 +1234,151 @@ function salvarPrecos(){
 }
 
 // ================================================================
-// MODAL BALANCEAR MIX
+// MODAL BALANCEAR MIX — com ticket médio por pessoa
 // ================================================================
 function abrirBalancear(){
-  // Construir análise do mix
-  let totCu=0,totRec=0;
+  const targetRev    = parseFloat(document.getElementById('meta-fat-global')?.value)    || 100000;
+  const targetPessoas= parseFloat(document.getElementById('meta-pessoas-global')?.value)|| 625;
+  const targetCMV    = parseFloat(document.getElementById('meta-cmv-global')?.value)/100|| 0.25;
+  const ticketAlvo   = targetRev / targetPessoas;
+
+  // ── CALCULAR MIX BALANCEADO ──────────────────────────────────
+  // Receita atual
+  let recAtual = 0;
+  cats.forEach(c => c.pratos.forEach(p => { recAtual += p.pv * p.mv; }));
+  if(recAtual <= 0){ alert('Configure os preços e metas nas abas primeiro.'); return; }
+
+  // Busca binária para alpha (CMV-alvo)
+  let alpha=0, lo=-3, hi=8;
+  for(let i=0;i<80;i++){
+    alpha=(lo+hi)/2;
+    let tR=0,tC=0;
+    const scale=targetRev/recAtual;
+    cats.forEach(c=>c.pratos.forEach(p=>{
+      const cmv=p.pv>0?calcCusto(p)/p.pv:0;
+      const adj=Math.max(0.05,1+alpha*(targetCMV-cmv)/(targetCMV||0.25));
+      const n=Math.max(1,Math.round(p.mv*scale*adj));
+      tR+=p.pv*n; tC+=calcCusto(p)*n;
+    }));
+    if(tR>0&&tC/tR>targetCMV) hi=alpha; else lo=alpha;
+  }
+
+  // Montar resultado
+  const scale=targetRev/recAtual;
   const todos=[];
+  let totRec=0,totCu=0,totN=0;
   cats.forEach(cat=>cat.pratos.forEach(p=>{
     const cu=calcCusto(p);
-    const recM=p.pv*p.mv;
-    const cuM=cu*p.mv;
-    totCu+=cuM; totRec+=recM;
-    todos.push({p,cu,cmv:p.pv>0?cu/p.pv:0,recM,cuM});
+    const cmvP=p.pv>0?cu/p.pv:0;
+    const adj=Math.max(0.05,1+alpha*(targetCMV-cmvP)/(targetCMV||0.25));
+    const nSug=Math.max(1,Math.round(p.mv*scale*adj));
+    const recSug=p.pv*nSug; const cuSug=cu*nSug;
+    totRec+=recSug; totCu+=cuSug; totN+=nSug;
+    todos.push({cat:cat.nome,p,cu,cmvP,nAtual:p.mv,nSug,recSug,cuSug});
   }));
-  const cmvGlobal=totRec>0?totCu/totRec:0;
 
-  // Ordenar por CMV desc
-  const sorted=[...todos].sort((a,b)=>b.cmv-a.cmv);
+  const cmvFinal=totRec>0?totCu/totRec:0;
+  const ticketReal=totRec/targetPessoas;
+  const mcTotal=totRec-totCu;
 
-  const linhas=sorted.map(({p,cu,cmv,recM,cuM})=>{
-    const contrib=(totRec>0?(cuM/totRec)*100:0);
-    const cls=cmvCls(cmv);
+  // Ordenar por receita sugerida desc
+  const sorted=[...todos].sort((a,b)=>b.recSug-a.recSug);
+
+  const linhas=sorted.map(({cat,p,cu,cmvP,nAtual,nSug,recSug})=>{
+    const pct=totRec>0?recSug/totRec*100:0;
+    const var_=nAtual>0?((nSug-nAtual)/nAtual*100):0;
+    const varCls=var_>=0?'color:#2ecc71':'color:#e74c3c';
     return `<tr>
-      <td>${p.nome}</td>
-      <td class="r">R$ ${F2(cu)}</td>
+      <td>
+        <div style="font-weight:600;font-size:12px">${p.nome}</div>
+        <div style="font-size:9px;color:#aaa">${cat.split(' ').slice(0,2).join(' ')}</div>
+      </td>
       <td class="r">R$ ${F2(p.pv)}</td>
-      <td class="r"><span class="badge ${cls}">${FP(cmv)}</span></td>
-      <td class="r">${p.mv}</td>
-      <td class="r">R$ ${F2(recM)}</td>
-      <td class="r">${F2(contrib)}%</td>
+      <td class="r">R$ ${F2(cu)}</td>
+      <td class="r"><span class="badge ${cmvCls(cmvP)}">${FP(cmvP)}</span></td>
+      <td class="r">${nAtual}</td>
+      <td class="r" style="font-weight:700;color:#2c1810">${nSug}</td>
+      <td class="r" style="${varCls}">${var_>=0?'▲':'▼'}${Math.abs(var_).toFixed(0)}%</td>
+      <td class="r" style="font-weight:600">R$ ${F2(recSug)}</td>
+      <td class="r" style="font-size:10px;color:#888">${pct.toFixed(1)}%</td>
     </tr>`;
   }).join('');
 
-  const sugestao = cmvGlobal>0.255 ?
-    `<p>⚠ O CMV ponderado atual (<strong>${FP(cmvGlobal)}</strong>) está acima da meta. <br>
-    Estratégia: aumente a meta de vendas dos pratos com CMV abaixo de 20% (petiscos, saladas, pratos mineiros)
-    ou reduza as metas dos pratos com CMV alto (filé mignon, salmão).</p>` :
-    `<p>✅ O CMV ponderado atual (<strong>${FP(cmvGlobal)}</strong>) está dentro ou abaixo da meta de 25%.
-    Há espaço para reduzir preços em pratos estratégicos para aumentar competitividade e volume.</p>`;
+  const diffTicket=ticketReal-ticketAlvo;
+  const ticketStatus=Math.abs(diffTicket)<5
+    ?`<span style="color:#2ecc71">✅ Ticket alinhado com a meta</span>`
+    :`<span style="color:#e67e22">⚠ Ticket ${diffTicket>0?'acima':'abaixo'} da meta em R$ ${F2(Math.abs(diffTicket))}</span>`;
 
   document.getElementById('bal-body').innerHTML=`
-    <div class="bal-info">${sugestao}
-      <br><strong>Lógica:</strong> pratos com CMV baixo (petiscos, salada, frango, mineira) "bancam"
-      os pratos premium (filé mignon, salmão, camarão). Quanto maior a meta dos itens de baixo CMV,
-      mais agressivo você pode ser no preço dos itens nobres — aumentando competitividade e volume total.
+    <!-- Resumo do balanceamento -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
+      <div style="background:var(--cor-primaria);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase">Receita Calculada</div>
+        <div style="font-size:20px;font-weight:700;color:var(--cor-accent)">R$ ${F2(totRec)}</div>
+        <div style="font-size:9px;color:#888">meta: R$ ${F2(targetRev)}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase">Ticket Médio/Pessoa</div>
+        <div style="font-size:20px;font-weight:700;color:#c9a84c">R$ ${F2(ticketReal)}</div>
+        <div style="font-size:9px">${ticketStatus}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase">CMV Resultante</div>
+        <div style="font-size:20px;font-weight:700" class="${cmvCls(cmvFinal)}">${FP(cmvFinal)}</div>
+        <div style="font-size:9px;color:#888">meta: ${(targetCMV*100).toFixed(0)}%</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase">Margem de Contribuição</div>
+        <div style="font-size:20px;font-weight:700;color:#2ecc71">R$ ${F2(mcTotal)}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase">Total Porções/mês</div>
+        <div style="font-size:20px;font-weight:700;color:#ddd">${totN.toLocaleString('pt-BR')}</div>
+        <div style="font-size:9px;color:#888">${targetPessoas} pessoas · ${(totN/targetPessoas).toFixed(1)} itens/pessoa</div>
+      </div>
     </div>
-    <div style="overflow-x:auto;">
+    <div class="bal-info" style="margin-bottom:14px">
+      <strong>Como funciona:</strong> o sistema aumenta proporcionalmente as metas dos pratos com menor CMV
+      (petiscos, sobremesas, frango, mineira) e modera os de maior CMV (filé, salmão, camarão) até
+      atingir simultaneamente a <strong>receita de R$ ${F2(targetRev)}</strong>, o
+      <strong>CMV de ${(targetCMV*100).toFixed(0)}%</strong> e o
+      <strong>ticket de R$ ${F2(ticketAlvo)}/pessoa</strong> com ${targetPessoas.toLocaleString('pt-BR')} pessoas.
+    </div>
+    <div style="overflow-x:auto">
     <table class="bal-table">
       <thead><tr>
-        <th>Prato</th><th class="r">Custo</th><th class="r">Preço</th>
-        <th class="r">CMV%</th><th class="r">Meta/mês</th>
-        <th class="r">Receita Est.</th><th class="r">Contrib.Receita</th>
+        <th>Prato</th><th class="r">Preço</th><th class="r">Custo</th>
+        <th class="r">CMV%</th><th class="r">Qtde Atual</th><th class="r">Qtde Sugerida</th>
+        <th class="r">Variação</th><th class="r">Receita</th><th class="r">% Total</th>
       </tr></thead>
       <tbody>${linhas}</tbody>
-      <tfoot><tr style="background:var(--cor-primaria);color:#fff;font-weight:700;">
-        <td colspan="5">CMV PONDERADO GLOBAL</td>
+      <tfoot><tr style="background:var(--cor-primaria);color:#fff;font-weight:700">
+        <td colspan="5">TOTAL — ${totN} porções · ${targetPessoas} pessoas</td>
+        <td class="r">${totN}</td><td></td>
         <td class="r">R$ ${F2(totRec)}</td>
-        <td class="r"><span class="badge ${cmvCls(cmvGlobal)}" style="font-size:13px;">${FP(cmvGlobal)}</span></td>
+        <td class="r"><span class="badge ${cmvCls(cmvFinal)}">${FP(cmvFinal)}</span></td>
       </tr></tfoot>
-    </table></div>`;
+    </table></div>
+    <!-- BOTÃO APLICAR -->
+    <div style="margin-top:14px;display:flex;justify-content:flex-end">
+      <button onclick="_aplicarMixBalancear(${JSON.stringify(todos.map(d=>({id:d.p.id,n:d.nSug})))})"
+        style="background:var(--cor-primaria);color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">
+        ✅ Aplicar este mix ao cardápio
+      </button>
+    </div>`;
 
   document.getElementById('ov-bal').classList.add('aberto');
+}
+
+function _aplicarMixBalancear(lista){
+  lista.forEach(({id,n})=>{
+    const p=pratoById(id); if(!p) return;
+    p.mv=n;
+    const inp=document.getElementById('mv-'+id); if(inp) inp.value=n;
+  });
+  recalcTudo(); atualizarResumo(); recalcRodapesCats();
+  if(document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
+  fecharOverlay('ov-bal');
 }
 
 // ================================================================
@@ -1353,6 +1464,8 @@ function _executarMetaGlobal() {
 
 // INIT
 render();
+atuTicketAlvo();
+setTimeout(() => _executarMetaGlobal(), 300); // aplica meta ao carregar
 
 // ================================================================
 // ABA META DE FATURAMENTO
@@ -1525,7 +1638,7 @@ function calcularMeta() {
         <div style="font-size:22px;font-weight:700;color:#ddd">R$ ${F2(totCost)}</div>
       </div>
       <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
-        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Lucro Bruto</div>
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Margem de Contribuição</div>
         <div style="font-size:22px;font-weight:700;color:#2ecc71">R$ ${F2(lucro)}</div>
       </div>
       <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
@@ -1746,7 +1859,7 @@ function renderConsolidado() {
         <div style="font-size:28px;font-weight:700;color:#ddd">R$ ${F2(totCusto)}</div>
       </div>
       <div style="text-align:center">
-        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Lucro Bruto/mês</div>
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Margem de Contribuição/mês</div>
         <div style="font-size:28px;font-weight:700;color:#2ecc71">R$ ${F2(totRec-totCusto)}</div>
       </div>
       <div style="text-align:center">
