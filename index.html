@@ -1392,27 +1392,32 @@ function fecharOverlay(id){ document.getElementById(id).classList.remove('aberto
 });
 
 // ================================================================
-// META GLOBAL — recalcula e aplica mix automaticamente
+// META GLOBAL — escala sempre a partir do mix BASE (mv0)
 // ================================================================
 let _metaTimer = null;
+
+// Guarda os valores originais de mv para nunca perder a proporção base
+function _guardarMixBase() {
+  cats.forEach(c => c.pratos.forEach(p => { p.mv0 = p.mv; }));
+}
+
 function aplicarMetaGlobal() {
-  // Debounce: espera 600ms depois da última digitação
   clearTimeout(_metaTimer);
   const el = document.getElementById('meta-status');
-  if(el) el.textContent = '⏳ calculando...';
-  _metaTimer = setTimeout(() => _executarMetaGlobal(), 600);
+  if(el){ el.textContent = '⏳ calculando...'; el.style.color = '#e67e22'; }
+  _metaTimer = setTimeout(() => _executarMetaGlobal(), 500);
 }
 
 function _executarMetaGlobal() {
   const targetRev = parseFloat(document.getElementById('meta-fat-global')?.value) || 100000;
   const targetCMV = parseFloat(document.getElementById('meta-cmv-global')?.value) / 100 || 0.25;
 
-  // Receita atual com mix atual
-  let recAtual = 0;
-  cats.forEach(c => c.pratos.forEach(p => { recAtual += p.pv * p.mv; }));
-  if (recAtual <= 0) return;
+  // ── Sempre escalar a partir do mix BASE (mv0), nunca do mv modificado ──
+  let recBase = 0;
+  cats.forEach(c => c.pratos.forEach(p => { recBase += p.pv * (p.mv0 || p.mv); }));
+  if (recBase <= 0) return;
 
-  const scale = targetRev / recAtual;
+  const scale = targetRev / recBase;
 
   // Busca binária para alpha que atinge CMV-alvo
   let alpha = 0, lo = -3, hi = 8;
@@ -1422,23 +1427,24 @@ function _executarMetaGlobal() {
     cats.forEach(c => c.pratos.forEach(p => {
       const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
       const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
-      const n = Math.max(1, Math.round(p.mv * scale * adj));
+      const base = p.mv0 || p.mv;
+      const n = Math.max(1, Math.round(base * scale * adj));
       tR += p.pv * n; tC += calcCusto(p) * n;
     }));
     if (tR > 0 && tC / tR > targetCMV) hi = alpha; else lo = alpha;
   }
 
-  // Aplicar quantidades calculadas
+  // Aplicar
   let totRev = 0, totCost = 0, totN = 0;
   cats.forEach(c => c.pratos.forEach(p => {
     const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
     const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
-    const n = Math.max(1, Math.round(p.mv * scale * adj));
+    const base = p.mv0 || p.mv;
+    const n = Math.max(1, Math.round(base * scale * adj));
     p.mv = n;
     totRev  += p.pv * n;
     totCost += calcCusto(p) * n;
     totN    += n;
-    // Atualizar input na tabela
     const inp = document.getElementById('mv-' + p.id);
     if (inp) inp.value = n;
   }));
@@ -1446,26 +1452,24 @@ function _executarMetaGlobal() {
   recalcTudo();
   atualizarResumo();
   recalcRodapesCats();
-
-  // Atualizar aba consolidado se estiver aberta
   if (document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
-  // Atualizar aba meta se estiver aberta
   if (document.getElementById('cat-meta')?.classList.contains('ativo')) calcularMeta();
 
-  // Feedback
   const cmvFinal = totRev > 0 ? totCost / totRev : 0;
+  const diffRec  = Math.abs(totRev - targetRev);
   const el = document.getElementById('meta-status');
   if (el) {
-    el.textContent = `✅ Mix aplicado — ${totN} porções · CMV ${FP(cmvFinal)}`;
-    el.style.color = cmvCls(cmvFinal) === 'ok' ? '#2ecc71' : '#e67e22';
-    setTimeout(() => { if(el){ el.textContent = '↵ recalcula automaticamente'; el.style.color = '#aaa'; } }, 4000);
+    el.textContent = `✅ R$ ${F2(totRev)} · CMV ${FP(cmvFinal)} · ${totN} porções`;
+    el.style.color = diffRec < targetRev * 0.02 ? '#2ecc71' : '#e67e22';
+    setTimeout(() => { if(el){ el.textContent = '↵ recalcula ao digitar'; el.style.color='#aaa'; }}, 5000);
   }
 }
 
 // INIT
 render();
+_guardarMixBase();   // salva proporções originais ANTES de qualquer cálculo
 atuTicketAlvo();
-setTimeout(() => _executarMetaGlobal(), 300); // aplica meta ao carregar
+setTimeout(() => _executarMetaGlobal(), 200);
 
 // ================================================================
 // ABA META DE FATURAMENTO
