@@ -1197,6 +1197,231 @@ function fecharOverlay(id){ document.getElementById(id).classList.remove('aberto
 
 // INIT
 render();
+
+// ================================================================
+// ABA META DE FATURAMENTO
+// ================================================================
+function renderAbaMeta() {
+  // Adicionar tab se ainda não existe
+  const tabsEl = document.getElementById('tabs');
+  if (!document.getElementById('tab-meta')) {
+    const t = document.createElement('div');
+    t.className = 'tab';
+    t.id = 'tab-meta';
+    t.textContent = '🎯 Meta de Faturamento';
+    t.onclick = () => abrirAbaMeta();
+    tabsEl.appendChild(t);
+  }
+  // Adicionar div da aba se não existe
+  if (!document.getElementById('cat-meta')) {
+    const d = document.createElement('div');
+    d.className = 'categoria';
+    d.id = 'cat-meta';
+    document.getElementById('conteudo').appendChild(d);
+  }
+}
+
+function abrirAbaMeta() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+  document.getElementById('tab-meta').classList.add('ativo');
+  document.querySelectorAll('.categoria').forEach(c => c.classList.remove('ativo'));
+  document.getElementById('cat-meta').classList.add('ativo');
+  calcularMeta();
+}
+
+function calcularMeta() {
+  const targetRev = parseFloat(document.getElementById('meta-receita')?.value) || 100000;
+  const targetCMV = parseFloat(document.getElementById('meta-cmv')?.value) / 100 || 0.25;
+
+  // Receita atual com mix atual
+  let recAtual = 0;
+  cats.forEach(c => c.pratos.forEach(p => { recAtual += p.pv * p.mv; }));
+  if (recAtual <= 0) { alert('Configure primeiro os preços e metas na aba do cardápio.'); return; }
+
+  const scale = targetRev / recAtual;
+
+  // Busca binária para o alpha que atinge o CMV-alvo
+  let alpha = 0, lo = -3, hi = 8;
+  for (let i = 0; i < 80; i++) {
+    alpha = (lo + hi) / 2;
+    let tR = 0, tC = 0;
+    cats.forEach(c => c.pratos.forEach(p => {
+      const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
+      const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
+      const n = Math.max(1, Math.round(p.mv * scale * adj));
+      tR += p.pv * n; tC += calcCusto(p) * n;
+    }));
+    if (tR > 0 && tC / tR > targetCMV) hi = alpha; else lo = alpha;
+  }
+
+  // Monta resultado final
+  const linhas = [];
+  let totRev = 0, totCost = 0, totPorcoes = 0;
+  cats.forEach(cat => cat.pratos.forEach(p => {
+    const cu = calcCusto(p);
+    const cmvP = p.pv > 0 ? cu / p.pv : 0;
+    const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmvP) / (targetCMV || 0.25));
+    const n = Math.max(1, Math.round(p.mv * scale * adj));
+    const recP = p.pv * n;
+    const cuP  = cu * n;
+    totRev += recP; totCost += cuP; totPorcoes += n;
+    linhas.push({ cat: cat.nome, p, cu, cmvP, n, recP, cuP,
+      varPct: p.mv > 0 ? ((n - p.mv) / p.mv) * 100 : 0 });
+  }));
+
+  const cmvFinal = totRev > 0 ? totCost / totRev : 0;
+  const lucro    = totRev - totCost;
+  const diasUteis = parseInt(document.getElementById('meta-dias')?.value) || 26;
+
+  // Agrupar por categoria para o ranking
+  const porCat = {};
+  linhas.forEach(l => {
+    if (!porCat[l.cat]) porCat[l.cat] = { rev: 0, cost: 0 };
+    porCat[l.cat].rev  += l.recP;
+    porCat[l.cat].cost += l.cuP;
+  });
+
+  // Ordenar linhas por receita contribuição desc
+  const sorted = [...linhas].sort((a, b) => b.recP - a.recP);
+
+  const linhasHTML = sorted.map((l, i) => {
+    const pct = totRev > 0 ? (l.recP / totRev * 100) : 0;
+    const varCls = l.varPct >= 0 ? 'color:#27ae60' : 'color:#e74c3c';
+    const varSinal = l.varPct >= 0 ? '▲' : '▼';
+    const cmvCl = cmvCls(l.cmvP);
+    const porDia = (l.n / diasUteis).toFixed(1);
+    return `<tr>
+      <td style="font-size:11px;color:#888">${i+1}</td>
+      <td>
+        <div style="font-weight:600;color:#2c1810">${l.p.nome}</div>
+        <div style="font-size:10px;color:#aaa">${l.cat.split(' ')[0]}</div>
+      </td>
+      <td class="r">R$ ${F2(l.p.pv)}</td>
+      <td class="r">R$ ${F2(l.cu)}</td>
+      <td class="r"><span class="badge ${cmvCl}">${FP(l.cmvP)}</span></td>
+      <td class="r" style="font-weight:700;color:#2c1810">${l.n}</td>
+      <td class="r" style="font-size:11px;color:#555">${porDia}/dia</td>
+      <td class="r" style="font-size:11px;${varCls}">${varSinal} ${Math.abs(l.varPct).toFixed(0)}%</td>
+      <td class="r" style="font-weight:600">R$ ${F2(l.recP)}</td>
+      <td class="r">
+        <div style="background:#eee;border-radius:3px;height:6px;width:80px;display:inline-block;vertical-align:middle">
+          <div style="background:#c9a84c;height:100%;border-radius:3px;width:${Math.min(100,pct*3)}%"></div>
+        </div>
+        <span style="font-size:10px;color:#888;margin-left:4px">${pct.toFixed(1)}%</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Cards por categoria
+  const catCards = Object.entries(porCat).map(([nome, v]) => {
+    const cmvC = v.rev > 0 ? v.cost / v.rev : 0;
+    return `<div style="background:#fff;border:1px solid var(--cor-borda);border-radius:8px;padding:12px 16px;min-width:160px">
+      <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px">${nome.split(' ').slice(0,2).join(' ')}</div>
+      <div style="font-size:18px;font-weight:700;color:#2c1810;margin:4px 0">R$ ${F2(v.rev)}</div>
+      <span class="badge ${cmvCls(cmvC)}" style="font-size:10px">${FP(cmvC)} CMV</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cat-meta').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+      <div class="titulo-cat" style="margin:0">🎯 Simulador de Meta de Faturamento</div>
+    </div>
+
+    <!-- INPUTS -->
+    <div style="background:#fff;border-radius:10px;padding:20px 24px;box-shadow:var(--sombra);margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Meta de Receita (R$)</div>
+        <input id="meta-receita" type="number" value="${targetRev}" step="1000" min="1000"
+          style="width:150px;padding:10px 14px;border:2px solid var(--cor-accent);border-radius:6px;font-size:20px;font-weight:700;color:#2c1810"
+          oninput="calcularMeta()">
+      </div>
+      <div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Meta CMV (%)</div>
+        <input id="meta-cmv" type="number" value="${(targetCMV*100).toFixed(0)}" step="1" min="10" max="50"
+          style="width:90px;padding:10px 14px;border:2px solid #ddd;border-radius:6px;font-size:20px;font-weight:700;color:#2c1810"
+          oninput="calcularMeta()">
+      </div>
+      <div>
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Dias Úteis no Mês</div>
+        <input id="meta-dias" type="number" value="${diasUteis}" step="1" min="1" max="31"
+          style="width:80px;padding:10px 14px;border:2px solid #ddd;border-radius:6px;font-size:20px;font-weight:700;color:#2c1810"
+          oninput="calcularMeta()">
+      </div>
+      <div style="font-size:11px;color:#888;max-width:280px;line-height:1.6;padding:8px 12px;background:#fdf9f3;border-radius:6px;border-left:3px solid var(--cor-accent)">
+        O sistema redistribui o mix automaticamente priorizando os pratos com <strong>menor CMV</strong> (mais rentáveis) para compensar os pratos premium e atingir a meta global.
+      </div>
+    </div>
+
+    <!-- CARDS RESUMO -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Receita Calculada</div>
+        <div style="font-size:22px;font-weight:700;color:var(--cor-accent)">R$ ${F2(totRev)}</div>
+        <div style="font-size:10px;color:#888">meta: R$ ${F2(targetRev)}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">CMV Resultante</div>
+        <div style="font-size:22px;font-weight:700" class="${cmvCls(cmvFinal)}">${FP(cmvFinal)}</div>
+        <div style="font-size:10px;color:#888">meta: ${(targetCMV*100).toFixed(0)}%</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Custo Total</div>
+        <div style="font-size:22px;font-weight:700;color:#ddd">R$ ${F2(totCost)}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Lucro Bruto</div>
+        <div style="font-size:22px;font-weight:700;color:#2ecc71">R$ ${F2(lucro)}</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Total Porções/mês</div>
+        <div style="font-size:22px;font-weight:700;color:#ddd">${totPorcoes.toLocaleString('pt-BR')}</div>
+        <div style="font-size:10px;color:#888">${(totPorcoes/diasUteis).toFixed(0)} por dia</div>
+      </div>
+      <div style="background:var(--cor-primaria);border-radius:10px;padding:16px 20px;text-align:center">
+        <div style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Ticket Médio</div>
+        <div style="font-size:22px;font-weight:700;color:var(--cor-accent)">R$ ${F2(totRev/totPorcoes)}</div>
+      </div>
+    </div>
+
+    <!-- RECEITA POR CATEGORIA -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px">Receita por Categoria</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">${catCards}</div>
+
+    <!-- TABELA DETALHADA -->
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:10px">
+      Ranking de Pratos — ordenado por maior contribuição na receita
+    </div>
+    <div style="overflow-x:auto">
+    <table class="main">
+      <thead><tr>
+        <th style="width:3%">#</th>
+        <th style="width:22%">Prato</th>
+        <th class="r" style="width:9%">Preço</th>
+        <th class="r" style="width:9%">Custo</th>
+        <th class="r" style="width:8%">CMV%</th>
+        <th class="r" style="width:9%">Qtde/mês</th>
+        <th class="r" style="width:8%">Diário</th>
+        <th class="r" style="width:9%">vs Atual</th>
+        <th class="r" style="width:12%">Receita</th>
+        <th class="r" style="width:11%">% Receita</th>
+      </tr></thead>
+      <tbody>${linhasHTML}</tbody>
+      <tfoot class="rod"><tr>
+        <td colspan="5"><strong>TOTAL</strong></td>
+        <td class="r"><strong>${totPorcoes.toLocaleString('pt-BR')}</strong></td>
+        <td class="r">${(totPorcoes/diasUteis).toFixed(0)}/dia</td>
+        <td></td>
+        <td class="r"><strong>R$ ${F2(totRev)}</strong></td>
+        <td class="r"><span class="badge ${cmvCls(cmvFinal)}">${FP(cmvFinal)} CMV</span></td>
+      </tr></tfoot>
+    </table>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:#aaa;text-align:right">
+      ▲▼ Variação em relação ao mix atual definido nas abas do cardápio
+    </div>`;
+}
+
+renderAbaMeta();
 </script>
 </body>
 </html>
