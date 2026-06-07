@@ -619,7 +619,7 @@ const cats = [
       ], pv:62.00, mv:35 },
   ]},
 
-  { nome:'COZINHA REGIONAL MINEIRA', sub:'', pratos:[
+  { nome:'COZINHA REGIONAL MINEIRA', tabLabel:'MINEIRA', sub:'', pratos:[
     { id:'tutu-costelinha', nome:'Tutu com Costelinha de Porco',
       desc:'Costelinha suína dourada na banha, tutu de feijão, couve, torresmo e arroz',
       prep:'Temperar e assar a costela suína em banha até dourar. Para o tutu: refogar alho e cebola, adicionar feijão cozido e bater parcialmente. Refogar a couve fininha no alho. Servir com arroz branco, torresmo e manteiga de garrafa.',
@@ -886,7 +886,7 @@ function render(){
   // TABS
   const tabsEl = document.getElementById('tabs');
   tabsEl.innerHTML = cats.map((c,i)=>
-    `<div class="tab${i===0?' ativo':''}" onclick="trocarTab(${i})">${c.nome.split(' ')[0]}</div>`
+    `<div class="tab${i===0?' ativo':''}" onclick="trocarTab(${i})">${c.tabLabel||c.nome.split(' ')[0]}</div>`
   ).join('');
 
   // CONTEÚDO
