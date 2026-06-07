@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BACCO — Cardápio & Engenharia de Menu</title>
+<style>
+/* ── TELA DE SENHA ─────────────────────────────────────── */
+#tela-senha{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1a0e09 0%,#2c1810 60%,#3d2416 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+#tela-senha.oculto{display:none;}
+.senha-box{
+  background:rgba(255,255,255,0.05);border:1px solid rgba(201,168,76,0.3);
+  border-radius:16px;padding:48px 40px;width:100%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;
+}
+.senha-logo{font-size:38px;letter-spacing:6px;font-weight:300;color:#c9a84c;margin-bottom:6px;}
+.senha-sub{font-size:11px;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:36px;}
+.senha-label{font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;text-align:left;}
+.senha-input{
+  width:100%;padding:12px 16px;background:rgba(255,255,255,0.08);
+  border:1px solid rgba(201,168,76,0.4);border-radius:8px;
+  color:#fff;font-size:18px;letter-spacing:4px;text-align:center;
+  outline:none;transition:border-color .2s;
+}
+.senha-input:focus{border-color:#c9a84c;}
+.senha-btn{
+  width:100%;margin-top:16px;padding:13px;
+  background:#c9a84c;color:#2c1810;border:none;border-radius:8px;
+  font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;
+  text-transform:uppercase;transition:background .2s;
+}
+.senha-btn:hover{background:#d4b55a;}
+.senha-erro{color:#e74c3c;font-size:12px;margin-top:10px;min-height:18px;}
+.senha-hint{margin-top:24px;font-size:10px;color:#555;border-top:1px solid rgba(255,255,255,0.07);padding-top:16px;}
+/* ─────────────────────────────────────────────────────── */
+:root {
+  --cor-primaria: #2c1810;
+  --cor-accent: #c9a84c;
+  --cor-bg: #f9f7f4;
+  --cor-verde: #1e8449;
+  --cor-verde-bg: #d5f5e3;
+  --cor-amarelo: #a04000;
+  --cor-amarelo-bg: #fdebd0;
+  --cor-vermelho: #922b21;
+  --cor-vermelho-bg: #fadbd8;
+  --cor-cinza: #7f8c8d;
+  --cor-borda: #e0d8cc;
+  --sombra: 0 2px 12px rgba(44,24,16,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--cor-bg);color:#333;font-size:14px;}
+
+header{background:var(--cor-primaria);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-size:26px;letter-spacing:4px;font-weight:300;color:var(--cor-accent);}
+.logo span{font-size:10px;display:block;letter-spacing:2px;color:#ccc;margin-top:1px;}
+.header-right{display:flex;gap:10px;align-items:center;}
+.btn-header{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;}
+.btn-header:hover{background:rgba(255,255,255,0.22);}
+.btn-accent{background:var(--cor-accent);color:var(--cor-primaria);border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;}
+.btn-accent:hover{background:#d4b55a;}
+
+/* PAINEL RESUMO */
+.resumo{background:#3d2416;padding:10px 28px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:3px solid var(--cor-accent);}
+.resumo-item{text-align:center;min-width:90px;}
+.resumo-item .lbl{font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px;}
+.resumo-item .val{font-size:20px;font-weight:700;color:var(--cor-accent);}
+.resumo-item .val.ok{color:#2ecc71;}
+.resumo-item .val.alerta{color:#e67e22;}
+.resumo-item .val.ruim{color:#e74c3c;}
+.resumo-sep{width:1px;height:36px;background:rgba(255,255,255,0.15);margin:0 4px;}
+.meta-global{margin-left:auto;display:flex;align-items:center;gap:10px;color:#ccc;font-size:12px;}
+.meta-global input{width:55px;background:#2c1810;border:1px solid #5a3a28;color:#fff;padding:4px 8px;border-radius:4px;font-size:14px;font-weight:700;text-align:center;}
+
+/* ALERTA CMV */
+.alerta-cmv{display:none;background:#7b241c;color:#fce4dc;font-size:12px;padding:8px 28px;text-align:center;}
+.alerta-cmv.visivel{display:block;}
+
+/* TABS */
+.tabs{background:#fff;border-bottom:2px solid var(--cor-borda);padding:0 28px;display:flex;overflow-x:auto;}
+.tab{padding:10px 16px;cursor:pointer;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-bottom:3px solid transparent;color:var(--cor-cinza);white-space:nowrap;}
+.tab:hover{color:var(--cor-primaria);}
+.tab.ativo{color:var(--cor-primaria);border-bottom-color:var(--cor-accent);}
+
+/* CONTEÚDO */
+.conteudo{padding:20px 28px;}
+.categoria{display:none;}
+.categoria.ativo{display:block;}
+.titulo-cat{font-size:17px;font-weight:700;color:var(--cor-primaria);margin-bottom:4px;}
+.sub-cat{font-size:11px;color:var(--cor-cinza);margin-bottom:14px;}
+
+/* TABELA */
+table.main{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:var(--sombra);}
+table.main thead tr{background:var(--cor-primaria);color:#fff;}
+table.main th{padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+th.r,td.r{text-align:right;}
+table.main td{padding:8px 12px;border-bottom:1px solid var(--cor-borda);vertical-align:middle;}
+table.main tr:last-child td{border-bottom:none;}
+table.main tbody tr:hover td{background:#fdf9f3;}
+
+.nm{font-weight:600;color:var(--cor-primaria);cursor:pointer;}
+.nm:hover{color:var(--cor-accent);text-decoration:underline;}
+.dsc{font-size:10px;color:var(--cor-cinza);margin-top:1px;}
+
+input.n{border:1px solid var(--cor-borda);border-radius:3px;padding:3px 6px;font-size:13px;background:#fffef8;text-align:right;}
+input.n:focus{outline:none;border-color:var(--cor-accent);}
+input.n.preco{width:78px;font-weight:700;color:var(--cor-primaria);}
+input.n.meta{width:58px;color:#555;}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.badge.ok{background:var(--cor-verde-bg);color:var(--cor-verde);}
+.badge.alerta{background:var(--cor-amarelo-bg);color:var(--cor-amarelo);}
+.badge.ruim{background:var(--cor-vermelho-bg);color:var(--cor-vermelho);}
+
+.btn-ft{background:none;border:1px solid var(--cor-accent);color:var(--cor-accent);padding:3px 9px;border-radius:3px;cursor:pointer;font-size:10px;font-weight:700;}
+.btn-ft:hover{background:var(--cor-accent);color:#fff;}
+
+/* Barra de contribuição CMV */
+.barra-cont{height:6px;border-radius:3px;background:#eee;margin-top:3px;overflow:hidden;}
+.barra-fill{height:100%;border-radius:3px;transition:width .3s;}
+
+/* TFOOT */
+tfoot.rod tr td{background:#f5f0ea;border-top:2px solid var(--cor-borda);font-weight:700;color:var(--cor-primaria);}
+
+/* ============ MODAL ============ */
+.overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;justify-content:center;align-items:flex-start;padding:20px;overflow-y:auto;}
+.overlay.aberto{display:flex;}
+.modal{background:#fff;border-radius:10px;width:100%;max-width:860px;box-shadow:0 8px 40px rgba(0,0,0,.3);margin:auto;}
+.mhdr{background:var(--cor-primaria);color:#fff;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;border-radius:10px 10px 0 0;}
+.mtit{font-size:17px;font-weight:700;color:var(--cor-accent);}
+.msub{font-size:10px;color:#bbb;margin-top:2px;}
+.btn-x{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1;}
+.mbody{padding:18px 22px;}
+
+/* Grid modal */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.slbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--cor-cinza);margin-bottom:6px;font-weight:700;}
+.preparo{background:#fdf9f3;border-left:3px solid var(--cor-accent);padding:10px 14px;font-size:12px;line-height:1.7;color:#444;}
+
+/* Tabela ficha técnica */
+table.ft{width:100%;border-collapse:collapse;}
+table.ft th{background:#f5f0ea;color:var(--cor-primaria);font-size:10px;text-transform:uppercase;padding:7px 9px;border:1px solid var(--cor-borda);}
+table.ft td{padding:6px 9px;border:1px solid var(--cor-borda);font-size:12px;vertical-align:middle;}
+table.ft input{border:1px solid #ddd;border-radius:3px;padding:3px 5px;font-size:12px;background:#fffef8;}
+table.ft input:focus{outline:none;border-color:var(--cor-accent);}
+table.ft input.qtd-in{width:70px;text-align:right;}
+table.ft input.preco-in{width:75px;text-align:right;}
+table.ft .tot-row{background:#f5f0ea;font-weight:700;}
+table.ft .res-row{background:var(--cor-primaria);color:#fff;}
+table.ft .res-row td{border-color:var(--cor-primaria);}
+.rlbl{color:#aaa;font-size:11px;}
+.rval{color:var(--cor-accent);font-size:15px;font-weight:700;}
+
+/* Painel resumo ficha */
+.ft-resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;background:#fdf9f3;padding:12px;border-radius:6px;border:1px solid var(--cor-borda);}
+.ft-res-item{text-align:center;}
+.ft-res-item .lbl{font-size:9px;color:var(--cor-cinza);text-transform:uppercase;letter-spacing:.5px;}
+.ft-res-item .val{font-size:16px;font-weight:700;color:var(--cor-primaria);}
+
+.mftr{padding:12px 22px;background:#f9f7f4;border-top:1px solid var(--cor-borda);display:flex;align-items:center;gap:12px;border-radius:0 0 10px 10px;}
+.mftr .inf{font-size:11px;color:var(--cor-cinza);}
+.btn-save{background:var(--cor-primaria);color:#fff;border:none;padding:8px 18px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:700;margin-left:auto;}
+.btn-save:hover{background:#3d2416;}
+
+/* Modal ingredientes globais */
+.ing-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:58vh;overflow-y:auto;padding-right:6px;}
+.ing-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cor-borda);}
+.ing-row label{flex:1;font-size:12px;}
+.ing-row .un{font-size:10px;color:var(--cor-cinza);width:28px;}
+.ing-row input{width:80px;border:1px solid #ddd;border-radius:3px;padding:3px 7px;text-align:right;font-size:12px;}
+
+/* Modal balancear */
+.bal-info{background:#f0f8ff;border-left:3px solid #3498db;padding:12px 14px;font-size:12px;line-height:1.7;margin-bottom:14px;}
+.bal-table{width:100%;border-collapse:collapse;}
+.bal-table th{background:#f5f0ea;font-size:10px;text-transform:uppercase;padding:7px 10px;border:1px solid var(--cor-borda);}
+.bal-table td{padding:6px 10px;border:1px solid var(--cor-borda);font-size:12px;}
+.bal-table .seta{color:var(--cor-accent);font-weight:700;}
+
+@media(max-width:700px){
+  .conteudo{padding:10px;}
+  .mgrid,.ft-resumo{grid-template-columns:1fr;}
+  .ing-grid{grid-template-columns:1fr;}
+  th.hide-mob,td.hide-mob{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ TELA DE SENHA ══════════════════════════════════════ -->
+<div id="tela-senha">
+  <div class="senha-box">
+    <div class="senha-logo">BACCO</div>
+    <div class="senha-sub">Gestão de Cardápio — Acesso Restrito</div>
+    <div class="senha-label">Senha de acesso</div>
+    <input class="senha-input" type="password" id="senha-input"
+      placeholder="••••••••" maxlength="32"
+      onkeydown="if(event.key==='Enter')verificarSenha()">
+    <button class="senha-btn" onclick="verificarSenha()">Entrar</button>
+    <div class="senha-erro" id="senha-erro"></div>
+    <div class="senha-hint">Área restrita — apenas usuários autorizados.<br>Entre em contato com o administrador para obter acesso.</div>
+  </div>
+</div>
+
+<script>
+// ── AUTENTICAÇÃO ────────────────────────────────────────
+// SHA-256 de "bacco2025"  — para trocar a senha: recalcule o hash
+const HASH_CORRETO = '64eaeac1cb8decb4c9de64e67a36ce0ea9d95fa550b59cc8345c81a15dbcb266';
+const SESSAO_KEY   = 'bacco_auth_ok';
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function verificarSenha(){
+  const inp   = document.getElementById('senha-input');
+  const erro  = document.getElementById('senha-erro');
+  const valor = inp.value.trim();
+  if(!valor){ erro.textContent='Digite a senha para continuar.'; return; }
+  erro.textContent='';
+  const hash = await sha256(valor);
+  if(hash === HASH_CORRETO){
+    sessionStorage.setItem(SESSAO_KEY,'1');
+    document.getElementById('tela-senha').classList.add('oculto');
+  } else {
+    erro.textContent='Senha incorreta. Tente novamente.';
+    inp.value='';
+    inp.focus();
+  }
+}
+
+// Verificar sessão ao carregar
+(async()=>{
+  if(sessionStorage.getItem(SESSAO_KEY)==='1'){
+    document.getElementById('tela-senha').classList.add('oculto');
+  } else {
+    // Bloquear scroll do conteúdo enquanto tela está ativa
+    document.body.style.overflow='hidden';
+    document.getElementById('tela-senha').addEventListener('transitionend',()=>{
+      document.body.style.overflow='';
+    });
+    setTimeout(()=>document.getElementById('senha-input').focus(),100);
+  }
+})();
+// ────────────────────────────────────────────────────────
+</script>
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<header>
+  <div class="logo">BACCO<span>Restaurante & Bar — Engenharia de Menu</span></div>
+  <div class="header-right">
+    <button class="btn-header" onclick="abrirPrecos()">⚙ Preços de Compra</button>
+    <button class="btn-accent" onclick="abrirBalancear()">⚖ Balancear Mix</button>
+  </div>
+</header>
+
+<div class="resumo">
+  <div class="resumo-item">
+    <div class="lbl">CMV Ponderado (mix)</div>
+    <div class="val" id="cmv-pond">—</div>
+  </div>
+  <div class="resumo-sep"></div>
+  <div class="resumo-item">
+    <div class="lbl">Meta CMV</div>
+    <div class="val" style="color:#888">25,0%</div>
+  </div>
+  <div class="resumo-sep"></div>
+  <div class="resumo-item">
+    <div class="lbl">Receita Mensal Est.</div>
+    <div class="val" id="rec-total" style="color:#ddd">—</div>
+  </div>
+  <div class="resumo-item">
+    <div class="lbl">Custo Mensal Est.</div>
+    <div class="val" id="cus-total" style="color:#ddd">—</div>
+  </div>
+  <div class="resumo-item">
+    <div class="lbl">Lucro Bruto Mensal</div>
+    <div class="val" id="luc-total" style="color:#2ecc71">—</div>
+  </div>
+  <div class="resumo-item hide-mob">
+    <div class="lbl">Porções / Mês (total)</div>
+    <div class="val" id="porcoes-total" style="color:#ddd">—</div>
+  </div>
+  <div class="resumo-sep"></div>
+  <div class="resumo-item">
+    <div class="lbl">Ticket Médio</div>
+    <div class="val" id="ticket-med" style="color:#ddd">—</div>
+  </div>
+</div>
+<div class="alerta-cmv" id="alerta-cmv">
+  ⚠ CMV ponderado acima da meta de 25% — ajuste o mix de vendas ou os preços de venda para reequilibrar.
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="conteudo" id="conteudo"></div>
+
+<!-- OVERLAY FICHA TÉCNICA -->
+<div class="overlay" id="ov-ficha">
+  <div class="modal" id="mod-ficha"></div>
+</div>
+
+<!-- OVERLAY PREÇOS GLOBAIS -->
+<div class="overlay" id="ov-precos">
+  <div class="modal" style="max-width:700px">
+    <div class="mhdr">
+      <div><div class="mtit">Preços de Compra — Ingredientes</div><div class="msub">Atualize para recalcular todos os pratos em tempo real</div></div>
+      <button class="btn-x" onclick="fecharOverlay('ov-precos')">×</button>
+    </div>
+    <div class="mbody">
+      <div class="ing-grid" id="lista-ing"></div>
+    </div>
+    <div class="mftr">
+      <span class="inf">R$/kg, R$/L ou R$/unidade conforme indicado</span>
+      <button class="btn-save" onclick="salvarPrecos()">Salvar e Recalcular</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY BALANCEAR MIX -->
+<div class="overlay" id="ov-bal">
+  <div class="modal" style="max-width:780px">
+    <div class="mhdr">
+      <div><div class="mtit">⚖ Análise do Mix de Vendas</div><div class="msub">Visão do CMV ponderado e sugestão de reequilíbrio</div></div>
+      <button class="btn-x" onclick="fecharOverlay('ov-bal')">×</button>
+    </div>
+    <div class="mbody" id="bal-body">Carregando...</div>
+    <div class="mftr">
+      <span class="inf">Ajuste as metas de vendas na tabela principal para ver o impacto em tempo real</span>
+      <button class="btn-save" onclick="fecharOverlay('ov-bal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// PREÇOS DE INGREDIENTES (R$/kg, R$/L ou R$/un)
+// ================================================================
+let precos = {
+  'Filé Mignon':         {p:85.00, u:'kg'},
+  'Filé de Frango':      {p:22.00, u:'kg'},
+  'Frango Caipira':      {p:30.00, u:'kg'},
+  'Filé de Salmão':      {p:68.00, u:'kg'},
+  'Camarão Limpo':       {p:85.00, u:'kg'},
+  'Tilápia':             {p:22.00, u:'kg'},
+  'Lagarto (carpaccio)': {p:38.00, u:'kg'},
+  'Costela Suína':       {p:28.00, u:'kg'},
+  'Ossobuco':            {p:35.00, u:'kg'},
+  'Toucinho/Torresmo':   {p:18.00, u:'kg'},
+  'Linguiça Artesanal':  {p:28.00, u:'kg'},
+  'Bacon':               {p:38.00, u:'kg'},
+  'Presunto de Parma':   {p:160.00,u:'kg'},
+  'Bife Ancho':          {p:90.00, u:'kg'},
+  'Lombo Suíno':         {p:30.00, u:'kg'},
+  'Linguiça Calabresa':  {p:25.00, u:'kg'},
+  'Carne Moída':         {p:35.00, u:'kg'},
+  'Queijo Meia Cura':    {p:52.00, u:'kg'},
+  'Parmesão':            {p:62.00, u:'kg'},
+  'Gorgonzola':          {p:72.00, u:'kg'},
+  'Mussarela':           {p:36.00, u:'kg'},
+  'Muçarela de Búfala':  {p:85.00, u:'kg'},
+  'Catupiry':            {p:62.00, u:'kg'},
+  'Cream Cheese':        {p:38.00, u:'kg'},
+  'Creme de Leite':      {p:28.00, u:'kg'},
+  'Manteiga':            {p:32.00, u:'kg'},
+  'Leite Integral':      {p: 5.00, u:'L'},
+  'Arroz Arbóreo':       {p:14.00, u:'kg'},
+  'Arroz Branco':        {p: 6.00, u:'kg'},
+  'Farinha de Trigo':    {p: 5.00, u:'kg'},
+  'Farinha de Rosca':    {p: 8.00, u:'kg'},
+  'Espaguete':           {p:10.00, u:'kg'},
+  'Massa Lasanha':       {p:12.00, u:'kg'},
+  'Fettuccine':          {p:12.00, u:'kg'},
+  'Fubá/Polenta':        {p: 5.00, u:'kg'},
+  'Feijão':              {p: 9.00, u:'kg'},
+  'Tomate':              {p: 6.00, u:'kg'},
+  'Tomate Cereja':       {p:16.00, u:'kg'},
+  'Cebola':              {p: 4.00, u:'kg'},
+  'Alho':                {p:25.00, u:'kg'},
+  'Cenoura':             {p: 4.00, u:'kg'},
+  'Batata':              {p: 5.00, u:'kg'},
+  'Batata Palha':        {p:20.00, u:'kg'},
+  'Abobrinha':           {p: 6.00, u:'kg'},
+  'Brócolis':            {p:10.00, u:'kg'},
+  'Couve':               {p: 8.00, u:'kg'},
+  'Champignon':          {p:32.00, u:'kg'},
+  'Rúcula':              {p:25.00, u:'kg'},
+  'Alface Romana':       {p:12.00, u:'kg'},
+  'Manjericão':          {p:30.00, u:'kg'},
+  'Alcaparra':           {p:80.00, u:'kg'},
+  'Mandioca':            {p: 5.00, u:'kg'},
+  'Banana da Terra':     {p: 6.00, u:'kg'},
+  'Legumes Mistos':      {p:12.00, u:'kg'},
+  'Azeite Extravirgem':  {p:52.00, u:'L'},
+  'Azeite Trufado':      {p:220.00,u:'L'},
+  'Vinho Branco Seco':   {p:28.00, u:'L'},
+  'Vinho Tinto Seco':    {p:30.00, u:'L'},
+  'Conhaque':            {p:80.00, u:'L'},
+  'Molho Madeira':       {p:35.00, u:'kg'},
+  'Pão Artesanal':       {p:18.00, u:'kg'},
+  'Croutons':            {p:20.00, u:'kg'},
+  'Iogurte Natural':     {p:12.00, u:'kg'},
+  'Bacalhau Dessalgado': {p:85.00, u:'kg'},
+  'Pastel de Angu':      {p: 1.50, u:'un'},
+  'Ovo':                 {p: 0.80, u:'un'},
+  'Caldo de Camarão':    {p: 5.00, u:'L'},
+  'Pesto de Coentro':    {p:35.00, u:'kg'},
+  'Mostarda Dijon':      {p:25.00, u:'kg'},
+  'Manteiga de Garrafa': {p:40.00, u:'L'},
+  'Ervilha':             {p:12.00, u:'kg'},
+};
+
+// ================================================================
+// DADOS DOS PRATOS  —  precoVenda e metaVendas editáveis
+// ================================================================
+const cats = [
+  { nome:'ENTRADAS & PETISCOS', sub:'Para Compartilhar', pratos:[
+    { id:'tabua-frios',    nome:'Tábua de Frios Mineira',
+      desc:'Queijo meia-cura, linguiça artesanal, torresmo e pastéis de angu',
+      prep:'Montar a tábua com os frios fatiados harmoniosamente. Servir o torresmo crocante separado, ainda quente. Acompanhar com pastéis de angu fritos na hora. Finalizar com azeite extravirgem.',
+      ings:[
+        {n:'Queijo Meia Cura',   q:0.150},
+        {n:'Linguiça Artesanal', q:0.150},
+        {n:'Toucinho/Torresmo',  q:0.080},
+        {n:'Pastel de Angu',     q:4},
+        {n:'Azeite Extravirgem', q:0.020},
+      ], pv:82.00, mv:45 },
+
+    { id:'bolinho-bacalhau', nome:'Bolinho de Bacalhau',
+      desc:'Crocantes por fora, cremosos por dentro. Com azeite extravirgem',
+      prep:'Dessalgar o bacalhau 24h. Cozinhar e desfiar. Misturar com purê de batata, ovo e temperos. Modelar em bolinhos de 50g. Fritar por imersão a 180°C até dourar. Servir 8 un com azeite extravirgem.',
+      ings:[
+        {n:'Bacalhau Dessalgado',q:0.100},
+        {n:'Batata',             q:0.100},
+        {n:'Ovo',                q:1},
+        {n:'Farinha de Trigo',   q:0.030},
+        {n:'Azeite Extravirgem', q:0.030},
+        {n:'Alho',               q:0.005},
+      ], pv:58.00, mv:85 },
+
+    { id:'risoles-camarao', nome:'Risoles de Camarão',
+      desc:'Recheado com camarões salteados e Catupiry — porção 10 un',
+      prep:'Preparar a massa com farinha, manteiga e leite. Saltear os camarões com alho e manteiga. Rechear com camarão e Catupiry. Empanar e fritar por imersão a 150°C.',
+      ings:[
+        {n:'Camarão Limpo',    q:0.120},
+        {n:'Catupiry',         q:0.080},
+        {n:'Farinha de Trigo', q:0.100},
+        {n:'Manteiga',         q:0.030},
+        {n:'Leite Integral',   q:0.100},
+        {n:'Farinha de Rosca', q:0.040},
+        {n:'Ovo',              q:1},
+      ], pv:68.00, mv:60 },
+
+    { id:'chips-parmesao', nome:'Chips de Parmesão com Presunto de Parma',
+      desc:'Chips de parmesão tostado com finas fatias de Presunto de Parma',
+      prep:'Ralar o parmesão e espalhar em frigideira de teflon. Torrar cuidadosamente dos dois lados e moldar. Servir com fatias finas de Presunto de Parma.',
+      ings:[
+        {n:'Parmesão',         q:0.080},
+        {n:'Presunto de Parma',q:0.060},
+      ], pv:58.00, mv:35 },
+
+    { id:'brusqueta', nome:'Brusquetas Duas Cores',
+      desc:'Pão artesanal tostado — Caprese (búfala, tomate, manjericão) e Italiana',
+      prep:'Fatiar e torrar o pão artesanal com azeite. Montar metade com tomate, muçarela de búfala e manjericão fresco. Outra metade à moda italiana com tomate, alho e orégano. Finalizar com azeite.',
+      ings:[
+        {n:'Pão Artesanal',    q:0.180},
+        {n:'Muçarela de Búfala',q:0.080},
+        {n:'Tomate',           q:0.120},
+        {n:'Manjericão',       q:0.010},
+        {n:'Azeite Extravirgem',q:0.030},
+      ], pv:48.00, mv:40 },
+  ]},
+
+  { nome:'ENTRADAS FRIAS & CARNES', sub:'', pratos:[
+    { id:'carpaccio', nome:'Carpaccio Tradicional',
+      desc:'Carne bovina fina, mostarda, alcaparras, rúcula e parmesão',
+      prep:'Dispor as lâminas de lagarto fatiado em leque no prato. Temperar com molho de mostarda. Salpicar parmesão, espalhar rúcula e alcaparras. Finalizar com azeite e limão. Servir com torradas da casa.',
+      ings:[
+        {n:'Lagarto (carpaccio)',q:0.090},
+        {n:'Rúcula',             q:0.030},
+        {n:'Parmesão',           q:0.020},
+        {n:'Alcaparra',          q:0.005},
+        {n:'Azeite Extravirgem', q:0.020},
+        {n:'Mostarda Dijon',     q:0.010},
+        {n:'Pão Artesanal',      q:0.050},
+      ], pv:52.00, mv:25 },
+
+    { id:'tartare-mignon', nome:'Tartare de Mignon',
+      desc:'Filé mignon na ponta da faca, temperado classicamente, com torradas',
+      prep:'Picar o filé mignon em cubos finos. Temperar com mostarda, alcaparra picada, gema, sal e pimenta. Montar com aro. Servir resfriado com torradas da casa.',
+      ings:[
+        {n:'Filé Mignon',        q:0.160},
+        {n:'Mostarda Dijon',     q:0.010},
+        {n:'Alcaparra',          q:0.005},
+        {n:'Ovo',                q:1},
+        {n:'Pão Artesanal',      q:0.060},
+        {n:'Azeite Extravirgem', q:0.010},
+      ], pv:72.00, mv:18 },
+
+    { id:'tiras-formaggi', nome:'Tiras de Filé Mignon ao Due Formaggi',
+      desc:'Iscas de filé salteadas em molho de gorgonzola e molho madeira',
+      prep:'Temperar o filé com sal e alho. Saltear em frigideira bem quente. Preparar o molho fundindo gorgonzola com creme de leite. Incorporar molho madeira. Finalizar com as tiras de filé e servir.',
+      ings:[
+        {n:'Filé Mignon',        q:0.200},
+        {n:'Gorgonzola',         q:0.040},
+        {n:'Creme de Leite',     q:0.080},
+        {n:'Molho Madeira',      q:0.060},
+        {n:'Manteiga',           q:0.020},
+        {n:'Alho',               q:0.005},
+      ], pv:92.00, mv:22 },
+
+    { id:'salada-caesar', nome:'Salada Caesar',
+      desc:'Alface romana, croutons, parmesão e molho Caesar — opcional frango grelhado',
+      prep:'Preparar o molho Caesar com maionese, limão, mostarda e parmesão. Misturar com alface romana. Finalizar com croutons dourados e lascas de parmesão. Opcional: tiras de frango grelhado.',
+      ings:[
+        {n:'Alface Romana',     q:0.150},
+        {n:'Croutons',          q:0.040},
+        {n:'Parmesão',          q:0.030},
+        {n:'Filé de Frango',    q:0.120},
+        {n:'Azeite Extravirgem',q:0.015},
+        {n:'Mostarda Dijon',    q:0.008},
+      ], pv:48.00, mv:42 },
+  ]},
+
+  { nome:'PRATOS PRINCIPAIS', sub:'Clássicos & Conforto', pratos:[
+    { id:'escalope-madeira', nome:'Escalope ao Molho Madeira',
+      desc:'Medalhões de filé grelhados com molho madeira e arroz à piamontese',
+      prep:'Temperar os escalopes com sal e alho. Grelhar na chapa ao ponto. Para o arroz à piamontese: aquecer arroz cozido com creme de leite e parmesão até homogeneizar. Finalizar com champignon no molho madeira.',
+      ings:[
+        {n:'Filé Mignon',    q:0.300},
+        {n:'Molho Madeira',  q:0.080},
+        {n:'Champignon',     q:0.050},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Creme de Leite', q:0.080},
+        {n:'Parmesão',       q:0.030},
+        {n:'Manteiga',       q:0.020},
+      ], pv:118.00, mv:38 },
+
+    { id:'parmegiana-file', nome:'Parmegiana Clássica — Filé Mignon',
+      desc:'Empanado artesanal, molho de tomates frescos e muçarela gratinada',
+      prep:'Temperar o filé com pasta de alho e sal. Empanar em farinha de trigo, ovo e farinha de rosca. Fritar a 180°C. Cobrir com molho de tomate fresco e muçarela. Gratinar. Servir com arroz branco e batata frita.',
+      ings:[
+        {n:'Filé Mignon',    q:0.300},
+        {n:'Farinha de Trigo',q:0.030},
+        {n:'Ovo',            q:1},
+        {n:'Farinha de Rosca',q:0.030},
+        {n:'Tomate',         q:0.150},
+        {n:'Mussarela',      q:0.080},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Batata',         q:0.200},
+      ], pv:125.00, mv:32 },
+
+    { id:'parmegiana-frango', nome:'Parmegiana Clássica — Frango',
+      desc:'Empanado artesanal, molho de tomates frescos e muçarela gratinada',
+      prep:'Temperar o filé de frango com pasta de alho e sal. Empanar em farinha, ovo e farinha de rosca. Fritar a 180°C. Cobrir com molho de tomate e muçarela. Gratinar. Servir com arroz branco e batata frita.',
+      ings:[
+        {n:'Filé de Frango', q:0.350},
+        {n:'Farinha de Trigo',q:0.030},
+        {n:'Ovo',            q:1},
+        {n:'Farinha de Rosca',q:0.030},
+        {n:'Tomate',         q:0.150},
+        {n:'Mussarela',      q:0.080},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Batata',         q:0.200},
+      ], pv:72.00, mv:50 },
+
+    { id:'estrogonofe', nome:'Estrogonofe Russo',
+      desc:'Filé mignon, cogumelos frescos, molho cremoso com toque de conhaque',
+      prep:'Saltear o filé fatiado em manteiga bem quente. Reservar. Refogar cebola, adicionar champignon. Flambar com conhaque. Agregar creme de leite formando o molho. Incorporar o filé. Servir com arroz e batata palha.',
+      ings:[
+        {n:'Filé Mignon',    q:0.280},
+        {n:'Champignon',     q:0.080},
+        {n:'Creme de Leite', q:0.100},
+        {n:'Conhaque',       q:0.030},
+        {n:'Cebola',         q:0.050},
+        {n:'Batata Palha',   q:0.050},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Manteiga',       q:0.020},
+      ], pv:128.00, mv:28 },
+
+    { id:'lasagna', nome:'Lasagna alla Bolognese',
+      desc:'Massa verde com espinafre, ragù de carne, bechamel aveludado e parmesão',
+      prep:'Preparar o ragù com carne moída, tomate e vinho tinto em cozimento lento por 2h. Preparar o bechamel com manteiga, farinha e leite. Montar intercalando massa, ragù e bechamel. Cobrir com parmesão. Gratinar a 200°C por 25min.',
+      ings:[
+        {n:'Massa Lasanha',  q:0.180},
+        {n:'Carne Moída',    q:0.200},
+        {n:'Tomate',         q:0.150},
+        {n:'Vinho Tinto Seco',q:0.050},
+        {n:'Leite Integral', q:0.150},
+        {n:'Farinha de Trigo',q:0.020},
+        {n:'Manteiga',       q:0.020},
+        {n:'Parmesão',       q:0.050},
+      ], pv:62.00, mv:35 },
+  ]},
+
+  { nome:'COZINHA REGIONAL MINEIRA', sub:'', pratos:[
+    { id:'tutu-costelinha', nome:'Tutu com Costelinha de Porco',
+      desc:'Costelinha suína dourada na banha, tutu de feijão, couve, torresmo e arroz',
+      prep:'Temperar e assar a costela suína em banha até dourar. Para o tutu: refogar alho e cebola, adicionar feijão cozido e bater parcialmente. Refogar a couve fininha no alho. Servir com arroz branco, torresmo e manteiga de garrafa.',
+      ings:[
+        {n:'Costela Suína',      q:0.300},
+        {n:'Feijão',             q:0.150},
+        {n:'Couve',              q:0.060},
+        {n:'Toucinho/Torresmo',  q:0.040},
+        {n:'Arroz Branco',       q:0.150},
+        {n:'Manteiga de Garrafa',q:0.010},
+        {n:'Alho',               q:0.005},
+      ], pv:65.00, mv:42 },
+
+    { id:'feijao-tropeiro', nome:'Feijão Tropeiro Completo',
+      desc:'Feijão tropeiro com lombo, bacon, linguiça calabresa, ovos, couve, arroz e banana frita',
+      prep:'Refogar o bacon e a linguiça calabresa. Adicionar o lombo em cubos. Incorporar o feijão já cozido com farinha de mandioca torrada. Adicionar ovos mexidos e couve refogada. Servir com arroz branco e banana da terra frita.',
+      ings:[
+        {n:'Feijão',            q:0.180},
+        {n:'Lombo Suíno',       q:0.100},
+        {n:'Bacon',             q:0.050},
+        {n:'Linguiça Calabresa',q:0.060},
+        {n:'Ovo',               q:1},
+        {n:'Couve',             q:0.040},
+        {n:'Arroz Branco',      q:0.150},
+        {n:'Banana da Terra',   q:0.080},
+      ], pv:62.00, mv:48 },
+
+    { id:'frango-molho-pardo', nome:'Frango ao Molho Pardo',
+      desc:'Frango caipira cozido lentamente no molho tradicional, arroz e angu cremoso',
+      prep:'Temperar os pedaços de frango caipira com alho, sal e vinagre. Selar em panela. Adicionar cebola e continuar o refogado. Incorporar o molho pardo escuro. Cozinhar lentamente. Servir com arroz branco e angu cremoso.',
+      ings:[
+        {n:'Frango Caipira', q:0.350},
+        {n:'Alho',           q:0.008},
+        {n:'Cebola',         q:0.060},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Fubá/Polenta',   q:0.100},
+        {n:'Manteiga',       q:0.020},
+      ], pv:65.00, mv:30 },
+  ]},
+
+  { nome:'PRATOS INDIVIDUAIS & CONTEMPORÂNEOS', sub:'', pratos:[
+    { id:'ossobuco', nome:'Ossobuco do Chef',
+      desc:'Cozido lentamente com ervas e vinho tinto, sobre purê rústico de legumes',
+      prep:'Selar o ossobuco em azeite bem quente. Preparar a base com cebola, cenoura, aipo, alho e tomate. Adicionar vinho tinto. Cozinhar em forno a 160°C por 3h. Para o purê rústico: cozinhar batata, cenoura e mandioca e amassar com manteiga.',
+      ings:[
+        {n:'Ossobuco',          q:0.350},
+        {n:'Vinho Tinto Seco',  q:0.100},
+        {n:'Tomate',            q:0.100},
+        {n:'Cenoura',           q:0.080},
+        {n:'Cebola',            q:0.060},
+        {n:'Batata',            q:0.100},
+        {n:'Mandioca',          q:0.100},
+        {n:'Manteiga',          q:0.030},
+        {n:'Azeite Extravirgem',q:0.020},
+      ], pv:88.00, mv:18 },
+
+    { id:'risoto-camarao', nome:'Risoto de Camarão',
+      desc:'Arroz arbóreo italiano, caldo de frutos do mar, camarões salteados e parmesão',
+      prep:'Temperar o camarão com sal e pimenta e puxar no azeite. Reservar. Refogar cebola e alho. Adicionar o arbóreo e tostar. Refrescar com vinho branco. Incorporar o caldo de camarão quente aos poucos. Finalizar com manteiga, parmesão e tomate cereja.',
+      ings:[
+        {n:'Camarão Limpo',     q:0.120},
+        {n:'Arroz Arbóreo',     q:0.120},
+        {n:'Parmesão',          q:0.050},
+        {n:'Manteiga',          q:0.030},
+        {n:'Vinho Branco Seco', q:0.020},
+        {n:'Caldo de Camarão',  q:0.500},
+        {n:'Tomate Cereja',     q:0.040},
+        {n:'Azeite Extravirgem',q:0.020},
+      ], pv:82.00, mv:32 },
+
+    { id:'frango-formaggi', nome:'Frango ao Formaggi',
+      desc:'Peito de frango grelhado com cremosa redução de queijos finos e arroz de brócolis',
+      prep:'Temperar o peito de frango com sal e alho e grelhar na chapa. Fundir gorgonzola e catupiry com creme de leite formando a redução. Nappear o frango com o molho. Servir com arroz salteado com brócolis al dente.',
+      ings:[
+        {n:'Filé de Frango', q:0.350},
+        {n:'Gorgonzola',     q:0.040},
+        {n:'Catupiry',       q:0.040},
+        {n:'Creme de Leite', q:0.080},
+        {n:'Arroz Branco',   q:0.150},
+        {n:'Brócolis',       q:0.080},
+        {n:'Manteiga',       q:0.020},
+      ], pv:75.00, mv:32 },
+
+    { id:'salmao-primavera', nome:'Salmão à Primavera com Pesto',
+      desc:'Filé de salmão grelhado na chapa, legumes salteados e pesto de coentro',
+      prep:'Temperar o salmão com sal e pimenta branca. Grelhar na chapa com azeite em frigideira bem quente. Saltear os legumes na manteiga. Finalizar com pesto de coentro fresco. Empratar o salmão sobre a cama de legumes.',
+      ings:[
+        {n:'Filé de Salmão',    q:0.180},
+        {n:'Legumes Mistos',    q:0.200},
+        {n:'Pesto de Coentro',  q:0.030},
+        {n:'Manteiga',          q:0.020},
+        {n:'Azeite Extravirgem',q:0.020},
+      ], pv:78.00, mv:28 },
+
+    { id:'espaguete-legumes', nome:'Espaguete de Legumes Trufado',
+      desc:'Tiras de abobrinha e cenoura em molho de iogurte com azeite trufado',
+      prep:'Cortar abobrinha e cenoura em tiras finas com espiralizador ou faca. Saltear na manteiga al dente. Preparar o molho com iogurte natural, azeite trufado, sal e pimenta branca. Envolver os legumes no molho. Finalizar com mais azeite trufado e parmesão.',
+      ings:[
+        {n:'Abobrinha',        q:0.200},
+        {n:'Cenoura',          q:0.100},
+        {n:'Iogurte Natural',  q:0.100},
+        {n:'Azeite Trufado',   q:0.015},
+        {n:'Manteiga',         q:0.020},
+        {n:'Parmesão',         q:0.020},
+      ], pv:52.00, mv:22 },
+  ]},
+
+  { nome:'GRELHADOS', sub:'Monte sua combinação — inclui 2 acompanhamentos do dia', pratos:[
+    { id:'bife-ancho', nome:'Bife Ancho',
+      desc:'Corte nobre argentino, 300g — escolha 2 acompanhamentos do dia',
+      prep:'Retirar o bife ancho da refrigeração 30min antes. Temperar apenas com sal grosso. Grelhar em chapa bem quente selando todos os lados. Finalizar com manteiga de ervas. Servir com 2 acompanhamentos à escolha.',
+      ings:[
+        {n:'Bife Ancho',   q:0.300},
+        {n:'Manteiga',     q:0.020},
+        {n:'Batata',       q:0.180},
+        {n:'Arroz Branco', q:0.150},
+      ], pv:125.00, mv:22 },
+
+    { id:'medalhao-file', nome:'Medalhão de Filé Mignon',
+      desc:'2 medalhões de 125g — escolha 2 acompanhamentos do dia',
+      prep:'Temperar os medalhões com sal e pimenta-do-reino. Grelhar na chapa bem quente selando rapidamente. Finalizar com manteiga de ervas. Servir ao ponto desejado com 2 acompanhamentos.',
+      ings:[
+        {n:'Filé Mignon',  q:0.250},
+        {n:'Manteiga',     q:0.020},
+        {n:'Batata',       q:0.180},
+        {n:'Arroz Branco', q:0.150},
+      ], pv:108.00, mv:28 },
+
+    { id:'tilapia-grelhada', nome:'Filé de Tilápia Grelhada',
+      desc:'350g — escolha 2 acompanhamentos do dia',
+      prep:'Temperar a tilápia com pasta de alho e sal. Grelhar em frigideira com azeite sem deixar quebrar. Servir com arroz branco e acompanhamentos do dia. Finalizar com salsa.',
+      ings:[
+        {n:'Tilápia',           q:0.350},
+        {n:'Legumes Mistos',    q:0.150},
+        {n:'Arroz Branco',      q:0.150},
+        {n:'Brócolis',          q:0.080},
+        {n:'Azeite Extravirgem',q:0.030},
+      ], pv:58.00, mv:38 },
+
+    { id:'frango-grelhado', nome:'Filé de Frango Grelhado',
+      desc:'350g — escolha 2 acompanhamentos do dia',
+      prep:'Temperar o filé de frango com pasta de alho e sal. Grelhar na chapa com azeite. Servir com acompanhamentos do dia.',
+      ings:[
+        {n:'Filé de Frango',    q:0.350},
+        {n:'Legumes Mistos',    q:0.150},
+        {n:'Arroz Branco',      q:0.150},
+        {n:'Brócolis',          q:0.080},
+        {n:'Azeite Extravirgem',q:0.030},
+      ], pv:55.00, mv:42 },
+  ]},
+];
+
+// ================================================================
+// UTILIDADES
+// ================================================================
+const F2 = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const FR = v => 'R$ ' + F2(v);
+const FP = v => F2(v*100) + '%';
+
+function calcCusto(p) {
+  return p.ings.reduce((s,i)=>{
+    const ref = precos[i.n]; return s + (ref ? i.q * ref.p : 0);
+  },0);
+}
+function cmvCls(c){ return c<=0.26?'ok':c<=0.31?'alerta':'ruim'; }
+
+function pratoById(id){
+  for(const c of cats) for(const p of c.pratos) if(p.id===id) return p;
+  return null;
+}
+
+// ================================================================
+// RESUMO GLOBAL
+// ================================================================
+function atualizarResumo(){
+  let totCusto=0, totRec=0, totPorcoes=0, totRec2=0;
+  for(const c of cats) for(const p of c.pratos){
+    const cu = calcCusto(p);
+    const mv = p.mv||0;
+    totCusto += cu*mv;
+    totRec   += p.pv*mv;
+    totPorcoes += mv;
+    totRec2  += p.pv;
+  }
+  const cmvP = totRec>0 ? totCusto/totRec : 0;
+  const elC = document.getElementById('cmv-pond');
+  elC.textContent = FP(cmvP);
+  elC.className = 'val ' + cmvCls(cmvP);
+  document.getElementById('rec-total').textContent = FR(totRec);
+  document.getElementById('cus-total').textContent = FR(totCusto);
+  document.getElementById('luc-total').textContent = FR(totRec-totCusto);
+  document.getElementById('porcoes-total').textContent = totPorcoes.toLocaleString('pt-BR');
+  const nPratos = cats.reduce((s,c)=>s+c.pratos.length,0);
+  document.getElementById('ticket-med').textContent = FR(totRec2/nPratos);
+  const al = document.getElementById('alerta-cmv');
+  al.classList.toggle('visivel', cmvP>0.255);
+}
+
+// ================================================================
+// RENDERIZAÇÃO PRINCIPAL
+// ================================================================
+function render(){
+  // TABS
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = cats.map((c,i)=>
+    `<div class="tab${i===0?' ativo':''}" onclick="trocarTab(${i})">${c.nome.split(' ')[0]}</div>`
+  ).join('');
+
+  // CONTEÚDO
+  const cont = document.getElementById('conteudo');
+  cont.innerHTML = '';
+
+  cats.forEach((cat,ci)=>{
+    const div = document.createElement('div');
+    div.className='categoria'+(ci===0?' ativo':'');
+    div.id='cat-'+ci;
+
+    let h=`<div class="titulo-cat">${cat.nome}</div>`;
+    if(cat.sub) h+=`<div class="sub-cat">${cat.sub}</div>`;
+    h+=`<table class="main"><thead><tr>
+      <th style="width:32%">Prato</th>
+      <th class="r" style="width:11%">Custo / Porção</th>
+      <th class="r" style="width:12%">Preço Venda</th>
+      <th class="r" style="width:9%">CMV%</th>
+      <th class="r hide-mob" style="width:10%">Margem</th>
+      <th class="r" style="width:12%">Meta Porções/mês</th>
+      <th class="r hide-mob" style="width:11%">Receita Est./mês</th>
+      <th style="width:8%">Ficha</th>
+    </tr></thead><tbody>`;
+
+    cat.pratos.forEach(p=>{
+      const cu = calcCusto(p);
+      const cmv = p.pv>0 ? cu/p.pv : 0;
+      const mg  = p.pv - cu;
+      const recEst = p.pv * p.mv;
+      h+=`<tr>
+        <td>
+          <div class="nm" onclick="abrirFicha('${p.id}')">${p.nome}</div>
+          <div class="dsc">${p.desc}</div>
+        </td>
+        <td class="r">R$ <span id="cu-${p.id}">${F2(cu)}</span></td>
+        <td class="r">R$ <input type="number" class="n preco" id="pv-${p.id}"
+          value="${p.pv.toFixed(2)}" step="1" min="0"
+          oninput="atuPV('${p.id}',this.value)"></td>
+        <td class="r"><span class="badge ${cmvCls(cmv)}" id="bc-${p.id}">${FP(cmv)}</span></td>
+        <td class="r hide-mob" id="mg-${p.id}">R$ ${F2(mg)}</td>
+        <td class="r"><input type="number" class="n meta" id="mv-${p.id}"
+          value="${p.mv}" step="1" min="0"
+          oninput="atuMV('${p.id}',this.value)"></td>
+        <td class="r hide-mob" id="re-${p.id}">R$ ${F2(recEst)}</td>
+        <td><button class="btn-ft" onclick="abrirFicha('${p.id}')">Ficha</button></td>
+      </tr>`;
+    });
+
+    // rodapé da categoria
+    let catCu=0,catRec=0,catPMes=0;
+    cat.pratos.forEach(p=>{ catCu+=calcCusto(p)*p.mv; catRec+=p.pv*p.mv; catPMes+=p.mv; });
+    const catCmv = catRec>0?catCu/catRec:0;
+    h+=`</tbody><tfoot class="rod"><tr>
+      <td>${cat.pratos.length} pratos — <small>CMV ponderado desta categoria</small></td>
+      <td></td><td></td>
+      <td class="r"><span class="badge ${cmvCls(catCmv)}" id="catcmv-${ci}">${FP(catCmv)}</span></td>
+      <td class="r hide-mob"></td>
+      <td class="r" id="catpm-${ci}">${catPMes} porções</td>
+      <td class="r hide-mob" id="catrec-${ci}">R$ ${F2(catRec)}</td>
+      <td></td>
+    </tr></tfoot></table>`;
+
+    div.innerHTML=h; cont.appendChild(div);
+  });
+
+  atualizarResumo();
+}
+
+function trocarTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('ativo',j===i));
+  document.querySelectorAll('.categoria').forEach((c,j)=>c.classList.toggle('ativo',j===i));
+}
+
+// ================================================================
+// ATUALIZAÇÃO EM TEMPO REAL
+// ================================================================
+function atuPV(id, val){
+  const p = pratoById(id);
+  if(!p) return;
+  p.pv = parseFloat(val)||0;
+  recalcPrato(id);
+  atualizarResumo();
+  recalcRodapesCats();
+}
+function atuMV(id, val){
+  const p = pratoById(id);
+  if(!p) return;
+  p.mv = parseInt(val)||0;
+  const re = document.getElementById('re-'+id);
+  if(re) re.textContent = 'R$ '+F2(p.pv*p.mv);
+  atualizarResumo();
+  recalcRodapesCats();
+}
+
+function recalcPrato(id){
+  const p = pratoById(id);
+  if(!p) return;
+  const cu = calcCusto(p);
+  const cmv = p.pv>0?cu/p.pv:0;
+  const mg = p.pv-cu;
+  const re = p.pv*p.mv;
+  const setCu = document.getElementById('cu-'+id);
+  const setBc = document.getElementById('bc-'+id);
+  const setMg = document.getElementById('mg-'+id);
+  const setRe = document.getElementById('re-'+id);
+  if(setCu){ setCu.textContent=F2(cu); }
+  if(setBc){ setBc.textContent=FP(cmv); setBc.className='badge '+cmvCls(cmv); }
+  if(setMg){ setMg.textContent='R$ '+F2(mg); }
+  if(setRe){ setRe.textContent='R$ '+F2(re); }
+}
+
+function recalcTudo(){
+  cats.forEach((cat,ci)=>{
+    cat.pratos.forEach(p=>recalcPrato(p.id));
+    recalcRodapeCategoria(ci);
+  });
+  atualizarResumo();
+}
+
+function recalcRodapesCats(){
+  cats.forEach((_,ci)=>recalcRodapeCategoria(ci));
+}
+
+function recalcRodapeCategoria(ci){
+  const cat = cats[ci];
+  let catCu=0,catRec=0,catPMes=0;
+  cat.pratos.forEach(p=>{ catCu+=calcCusto(p)*p.mv; catRec+=p.pv*p.mv; catPMes+=p.mv; });
+  const catCmv = catRec>0?catCu/catRec:0;
+  const elCmv = document.getElementById('catcmv-'+ci);
+  const elPm  = document.getElementById('catpm-'+ci);
+  const elRec = document.getElementById('catrec-'+ci);
+  if(elCmv){ elCmv.textContent=FP(catCmv); elCmv.className='badge '+cmvCls(catCmv); }
+  if(elPm)  elPm.textContent=catPMes+' porções';
+  if(elRec) elRec.textContent='R$ '+F2(catRec);
+}
+
+// ================================================================
+// MODAL FICHA TÉCNICA
+// ================================================================
+function abrirFicha(id){
+  const p = pratoById(id);
+  if(!p) return;
+
+  const cu = calcCusto(p);
+  const cmv = p.pv>0?cu/p.pv:0;
+  const mg  = p.pv-cu;
+  const recM= p.pv*p.mv;
+
+  let linhas='';
+  p.ings.forEach(ing=>{
+    const ref = precos[ing.n];
+    const pu  = ref?ref.p:0;
+    const un  = ref?ref.u:'?';
+    const tot = ing.q*pu;
+    // exibir qtd de forma legível
+    let qStr;
+    if(Number.isInteger(ing.q) && ing.q>=1){ qStr=ing.q+' un'; }
+    else if(un==='L'){ qStr=(ing.q*1000).toFixed(0)+' ml'; }
+    else { const g=ing.q*1000; qStr=(g>=1000?F2(g/1000)+' kg':(g.toFixed(0)+' g')); }
+
+    const k = id+'__'+ing.n.replace(/\s/g,'_').replace(/[()]/g,'');
+    linhas+=`<tr>
+      <td>${ing.n}</td>
+      <td class="r">
+        <input type="number" class="qtd-in" id="ftq-${k}" value="${ing.q}" step="0.001" min="0"
+          onchange="atuFTQtd('${id}','${ing.n}',this.value)">
+        <small style="color:#999">${un}</small>
+      </td>
+      <td class="r">
+        <input type="number" class="preco-in" id="ftp-${k}" value="${pu.toFixed(2)}" step="0.01" min="0"
+          onchange="atuFTPreco('${id}','${ing.n}',this.value)">
+        <small style="color:#999">/${un}</small>
+      </td>
+      <td class="r" id="ftt-${k}">R$ ${F2(tot)}</td>
+    </tr>`;
+  });
+
+  const html=`
+    <div class="mhdr">
+      <div><div class="mtit">${p.nome}</div><div class="msub">Ficha Técnica Completa — edite quantidades e preços diretamente</div></div>
+      <button class="btn-x" onclick="fecharOverlay('ov-ficha')">×</button>
+    </div>
+    <div class="mbody">
+      <div class="ft-resumo">
+        <div class="ft-res-item"><div class="lbl">Custo / Porção</div><div class="val" id="ft-cu-${id}">R$ ${F2(cu)}</div></div>
+        <div class="ft-res-item"><div class="lbl">Preço de Venda</div>
+          <div class="val">R$ <input type="number" id="ft-pv-${id}" value="${p.pv.toFixed(2)}" step="1"
+            onchange="atuPrecoFicha('${id}',this.value)" style="width:70px;font-size:15px;font-weight:700;border:1px solid #ccc;border-radius:3px;padding:2px 5px;"></div>
+        </div>
+        <div class="ft-res-item"><div class="lbl">Lucro Bruto</div><div class="val" id="ft-mg-${id}">R$ ${F2(mg)}</div></div>
+        <div class="ft-res-item"><div class="lbl">CMV%</div><div class="val ${cmvCls(cmv)}" id="ft-cmv-${id}">${FP(cmv)}</div></div>
+      </div>
+      <div class="mgrid">
+        <div>
+          <div class="slbl">Modo de Preparo</div>
+          <div class="preparo">${p.prep}</div>
+        </div>
+        <div>
+          <div class="slbl">Meta de Vendas</div>
+          <div style="background:#fdf9f3;border:1px solid var(--cor-borda);border-radius:6px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <label style="font-size:12px;flex:1;">Porções/mês</label>
+              <input type="number" style="width:70px;border:1px solid #ccc;border-radius:3px;padding:4px 8px;font-size:15px;font-weight:700;text-align:right;"
+                id="ft-mv-${id}" value="${p.mv}" step="1" min="0"
+                onchange="atuMetaFicha('${id}',this.value)">
+            </div>
+            <div style="font-size:11px;color:#888;">Receita estimada/mês</div>
+            <div style="font-size:18px;font-weight:700;color:var(--cor-primaria)" id="ft-rem-${id}">R$ ${F2(recM)}</div>
+            <hr style="margin:10px 0;border:none;border-top:1px solid var(--cor-borda);">
+            <div style="font-size:11px;color:#888;">Contribuição ao CMV ponderado</div>
+            <div class="barra-cont" style="margin-top:4px">
+              <div class="barra-fill" id="ft-barra-${id}" style="width:${Math.min(100,cmv*100/0.35*100)}%;background:${cmv<=0.26?'#27ae60':cmv<=0.31?'#e67e22':'#e74c3c'}"></div>
+            </div>
+            <div style="font-size:11px;color:#555;margin-top:3px;">Este prato opera a <strong>${FP(cmv)}</strong> de CMV</div>
+          </div>
+        </div>
+      </div>
+      <div class="slbl" style="margin-bottom:8px">Ingredientes — edite quantidade (porção) e preço de compra</div>
+      <table class="ft">
+        <thead><tr>
+          <th>Ingrediente</th>
+          <th class="r">Qtde / Porção</th>
+          <th class="r">Preço Compra</th>
+          <th class="r">Custo Total</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+        <tfoot><tr class="tot-row">
+          <td colspan="3"><strong>CUSTO TOTAL DA PORÇÃO</strong></td>
+          <td class="r" id="ft-tot-${id}">R$ ${F2(cu)}</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="mftr">
+      <span class="inf">Todas as alterações são aplicadas instantaneamente ao cardápio e ao CMV ponderado global.</span>
+      <button class="btn-save" onclick="fecharOverlay('ov-ficha')">Fechar</button>
+    </div>`;
+
+  document.getElementById('mod-ficha').innerHTML=html;
+  document.getElementById('ov-ficha').classList.add('aberto');
+}
+
+function atuFTQtd(pratoId, ingNome, val){
+  const p=pratoById(pratoId); if(!p) return;
+  const ing=p.ings.find(i=>i.n===ingNome); if(!ing) return;
+  ing.q=parseFloat(val)||0;
+  const ref=precos[ingNome];
+  const tot=ing.q*(ref?ref.p:0);
+  const k=pratoId+'__'+ingNome.replace(/\s/g,'_').replace(/[()]/g,'');
+  const el=document.getElementById('ftt-'+k); if(el) el.textContent='R$ '+F2(tot);
+  _recalcFicha(pratoId);
+}
+function atuFTPreco(pratoId, ingNome, val){
+  val=parseFloat(val)||0;
+  if(precos[ingNome]) precos[ingNome].p=val;
+  const p=pratoById(pratoId); if(!p) return;
+  const ing=p.ings.find(i=>i.n===ingNome); if(!ing) return;
+  const tot=ing.q*val;
+  const k=pratoId+'__'+ingNome.replace(/\s/g,'_').replace(/[()]/g,'');
+  const el=document.getElementById('ftt-'+k); if(el) el.textContent='R$ '+F2(tot);
+  _recalcFicha(pratoId);
+  recalcTudo();
+}
+function atuPrecoFicha(pratoId, val){
+  const p=pratoById(pratoId); if(!p) return;
+  p.pv=parseFloat(val)||0;
+  _recalcFicha(pratoId);
+  const inp=document.getElementById('pv-'+pratoId); if(inp) inp.value=p.pv.toFixed(2);
+  recalcTudo();
+}
+function atuMetaFicha(pratoId, val){
+  const p=pratoById(pratoId); if(!p) return;
+  p.mv=parseInt(val)||0;
+  const cu=calcCusto(p);
+  const remEl=document.getElementById('ft-rem-'+pratoId);
+  if(remEl) remEl.textContent='R$ '+F2(p.pv*p.mv);
+  const inp=document.getElementById('mv-'+pratoId); if(inp) inp.value=p.mv;
+  recalcTudo();
+}
+function _recalcFicha(pratoId){
+  const p=pratoById(pratoId); if(!p) return;
+  const cu=calcCusto(p);
+  const cmv=p.pv>0?cu/p.pv:0;
+  const mg=p.pv-cu;
+  const el1=document.getElementById('ft-cu-'+pratoId);
+  const el2=document.getElementById('ft-mg-'+pratoId);
+  const el3=document.getElementById('ft-cmv-'+pratoId);
+  const el4=document.getElementById('ft-tot-'+pratoId);
+  if(el1) el1.textContent='R$ '+F2(cu);
+  if(el2) el2.textContent='R$ '+F2(mg);
+  if(el3){ el3.textContent=FP(cmv); el3.className='val '+cmvCls(cmv); }
+  if(el4) el4.textContent='R$ '+F2(cu);
+  recalcPrato(pratoId);
+  atualizarResumo();
+  recalcRodapesCats();
+}
+
+// ================================================================
+// MODAL PREÇOS GLOBAIS
+// ================================================================
+function abrirPrecos(){
+  const lista=document.getElementById('lista-ing');
+  lista.innerHTML=Object.keys(precos).map(n=>{
+    const p=precos[n];
+    return `<div class="ing-row">
+      <label>${n}</label><span class="un">${p.u}</span>
+      <input type="number" id="gp-${n.replace(/[\s()]/g,'_')}" value="${p.p.toFixed(2)}" step="0.01" min="0">
+    </div>`;
+  }).join('');
+  document.getElementById('ov-precos').classList.add('aberto');
+}
+function salvarPrecos(){
+  for(const n of Object.keys(precos)){
+    const inp=document.getElementById('gp-'+n.replace(/[\s()]/g,'_'));
+    if(inp) precos[n].p=parseFloat(inp.value)||precos[n].p;
+  }
+  fecharOverlay('ov-precos');
+  recalcTudo();
+}
+
+// ================================================================
+// MODAL BALANCEAR MIX
+// ================================================================
+function abrirBalancear(){
+  // Construir análise do mix
+  let totCu=0,totRec=0;
+  const todos=[];
+  cats.forEach(cat=>cat.pratos.forEach(p=>{
+    const cu=calcCusto(p);
+    const recM=p.pv*p.mv;
+    const cuM=cu*p.mv;
+    totCu+=cuM; totRec+=recM;
+    todos.push({p,cu,cmv:p.pv>0?cu/p.pv:0,recM,cuM});
+  }));
+  const cmvGlobal=totRec>0?totCu/totRec:0;
+
+  // Ordenar por CMV desc
+  const sorted=[...todos].sort((a,b)=>b.cmv-a.cmv);
+
+  const linhas=sorted.map(({p,cu,cmv,recM,cuM})=>{
+    const contrib=(totRec>0?(cuM/totRec)*100:0);
+    const cls=cmvCls(cmv);
+    return `<tr>
+      <td>${p.nome}</td>
+      <td class="r">R$ ${F2(cu)}</td>
+      <td class="r">R$ ${F2(p.pv)}</td>
+      <td class="r"><span class="badge ${cls}">${FP(cmv)}</span></td>
+      <td class="r">${p.mv}</td>
+      <td class="r">R$ ${F2(recM)}</td>
+      <td class="r">${F2(contrib)}%</td>
+    </tr>`;
+  }).join('');
+
+  const sugestao = cmvGlobal>0.255 ?
+    `<p>⚠ O CMV ponderado atual (<strong>${FP(cmvGlobal)}</strong>) está acima da meta. <br>
+    Estratégia: aumente a meta de vendas dos pratos com CMV abaixo de 20% (petiscos, saladas, pratos mineiros)
+    ou reduza as metas dos pratos com CMV alto (filé mignon, salmão).</p>` :
+    `<p>✅ O CMV ponderado atual (<strong>${FP(cmvGlobal)}</strong>) está dentro ou abaixo da meta de 25%.
+    Há espaço para reduzir preços em pratos estratégicos para aumentar competitividade e volume.</p>`;
+
+  document.getElementById('bal-body').innerHTML=`
+    <div class="bal-info">${sugestao}
+      <br><strong>Lógica:</strong> pratos com CMV baixo (petiscos, salada, frango, mineira) "bancam"
+      os pratos premium (filé mignon, salmão, camarão). Quanto maior a meta dos itens de baixo CMV,
+      mais agressivo você pode ser no preço dos itens nobres — aumentando competitividade e volume total.
+    </div>
+    <div style="overflow-x:auto;">
+    <table class="bal-table">
+      <thead><tr>
+        <th>Prato</th><th class="r">Custo</th><th class="r">Preço</th>
+        <th class="r">CMV%</th><th class="r">Meta/mês</th>
+        <th class="r">Receita Est.</th><th class="r">Contrib.Receita</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+      <tfoot><tr style="background:var(--cor-primaria);color:#fff;font-weight:700;">
+        <td colspan="5">CMV PONDERADO GLOBAL</td>
+        <td class="r">R$ ${F2(totRec)}</td>
+        <td class="r"><span class="badge ${cmvCls(cmvGlobal)}" style="font-size:13px;">${FP(cmvGlobal)}</span></td>
+      </tr></tfoot>
+    </table></div>`;
+
+  document.getElementById('ov-bal').classList.add('aberto');
+}
+
+// ================================================================
+// UTILITÁRIOS OVERLAY
+// ================================================================
+function fecharOverlay(id){ document.getElementById(id).classList.remove('aberto'); }
+['ov-ficha','ov-precos','ov-bal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this) this.classList.remove('aberto');
+  });
+});
+
+// INIT
+render();
+</script>
+</body>
+</html>
