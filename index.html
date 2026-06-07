@@ -1418,10 +1418,202 @@ function calcularMeta() {
     </div>
     <div style="margin-top:12px;font-size:11px;color:#aaa;text-align:right">
       ▲▼ Variação em relação ao mix atual definido nas abas do cardápio
+    </div>
+    <!-- BOTÃO APLICAR AO MIX -->
+    <div style="margin-top:20px;padding:16px 20px;background:#fff;border-radius:10px;box-shadow:var(--sombra);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#2c1810">Aplicar este mix ao cardápio</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">As metas de vendas de todos os pratos serão atualizadas com os valores sugeridos acima</div>
+      </div>
+      <button onclick="aplicarMixSugerido()" style="margin-left:auto;background:#2c1810;color:#fff;border:none;padding:12px 28px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px">
+        ✅ Aplicar Mix ao Cardápio
+      </button>
     </div>`;
+
+  // Guardar resultado para o botão aplicar
+  window._mixSugerido = sorted;
 }
 
-renderAbaMeta();
+function aplicarMixSugerido() {
+  if (!window._mixSugerido) return;
+  window._mixSugerido.forEach(({ p, n }) => {
+    p.mv = n;
+    const inp = document.getElementById('mv-' + p.id);
+    if (inp) inp.value = n;
+  });
+  recalcTudo();
+  atualizarResumo();
+  // Feedback visual
+  const btn = event.target;
+  btn.textContent = '✔ Mix aplicado!';
+  btn.style.background = '#27ae60';
+  setTimeout(() => { btn.textContent = '✅ Aplicar Mix ao Cardápio'; btn.style.background = '#2c1810'; }, 2500);
+}
+
+// ================================================================
+// ABA CARDÁPIO CONSOLIDADO
+// ================================================================
+function renderAbaConsolidado() {
+  if (!document.getElementById('tab-cons')) {
+    const tabsEl = document.getElementById('tabs');
+    const t = document.createElement('div');
+    t.className = 'tab'; t.id = 'tab-cons';
+    t.textContent = '📋 Cardápio Completo';
+    t.onclick = () => abrirAbaConsolidado();
+    tabsEl.appendChild(t);
+  }
+  if (!document.getElementById('cat-cons')) {
+    const d = document.createElement('div');
+    d.className = 'categoria'; d.id = 'cat-cons';
+    document.getElementById('conteudo').appendChild(d);
+  }
+}
+
+function abrirAbaConsolidado() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+  document.getElementById('tab-cons').classList.add('ativo');
+  document.querySelectorAll('.categoria').forEach(c => c.classList.remove('ativo'));
+  document.getElementById('cat-cons').classList.add('ativo');
+  renderConsolidado();
+}
+
+function renderConsolidado() {
+  let totCusto = 0, totRec = 0, totPorcoes = 0;
+  cats.forEach(c => c.pratos.forEach(p => {
+    totCusto  += calcCusto(p) * p.mv;
+    totRec    += p.pv * p.mv;
+    totPorcoes+= p.mv;
+  }));
+  const cmvGlobal = totRec > 0 ? totCusto / totRec : 0;
+
+  // Seções por categoria
+  let secoes = '';
+  cats.forEach(cat => {
+    let linhas = '';
+    let catCu = 0, catRec = 0, catPorcoes = 0;
+    cat.pratos.forEach(p => {
+      const cu   = calcCusto(p);
+      const cmvP = p.pv > 0 ? cu / p.pv : 0;
+      const mg   = p.pv - cu;
+      const recM = p.pv * p.mv;
+      const cuM  = cu * p.mv;
+      const pctRec = totRec > 0 ? recM / totRec * 100 : 0;
+      catCu += cuM; catRec += recM; catPorcoes += p.mv;
+      linhas += `<tr>
+        <td>
+          <div style="font-weight:600;color:#2c1810;cursor:pointer" onclick="abrirFicha('${p.id}')">${p.nome}</div>
+          <div style="font-size:10px;color:#aaa">${p.desc}</div>
+        </td>
+        <td class="r">R$ ${F2(p.pv)}</td>
+        <td class="r" style="color:#888">R$ ${F2(cu)}</td>
+        <td class="r"><span class="badge ${cmvCls(cmvP)}">${FP(cmvP)}</span></td>
+        <td class="r" style="color:#27ae60;font-weight:600">R$ ${F2(mg)}</td>
+        <td class="r">${p.mv}</td>
+        <td class="r" style="font-weight:600">R$ ${F2(recM)}</td>
+        <td class="r" style="font-size:11px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="background:#eee;border-radius:3px;height:7px;width:60px">
+              <div style="background:${cmvP<=0.26?'#c9a84c':'#e74c3c'};height:100%;border-radius:3px;width:${Math.min(100,pctRec*4)}%"></div>
+            </div>
+            ${pctRec.toFixed(1)}%
+          </div>
+        </td>
+        <td><button class="btn-ft" onclick="abrirFicha('${p.id}')">Ficha</button></td>
+      </tr>`;
+    });
+    const catCmv = catRec > 0 ? catCu / catRec : 0;
+    secoes += `
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:700;color:#2c1810">${cat.nome}</div>
+          ${cat.sub ? `<div style="font-size:11px;color:#aaa">${cat.sub}</div>` : ''}
+          <span class="badge ${cmvCls(catCmv)}" style="margin-left:auto">${FP(catCmv)} CMV</span>
+          <span style="font-size:11px;color:#888">R$ ${F2(catRec)}/mês</span>
+        </div>
+        <table class="main">
+          <thead><tr>
+            <th style="width:30%">Prato</th>
+            <th class="r" style="width:9%">Preço</th>
+            <th class="r" style="width:9%">Custo</th>
+            <th class="r" style="width:8%">CMV%</th>
+            <th class="r" style="width:10%">Margem</th>
+            <th class="r" style="width:8%">Meta/mês</th>
+            <th class="r" style="width:11%">Receita Est.</th>
+            <th class="r" style="width:11%">% Total</th>
+            <th style="width:7%"></th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+          <tfoot class="rod"><tr>
+            <td><strong>${cat.pratos.length} pratos</strong></td>
+            <td></td><td></td>
+            <td class="r"><span class="badge ${cmvCls(catCmv)}">${FP(catCmv)}</span></td>
+            <td></td>
+            <td class="r"><strong>${catPorcoes}</strong></td>
+            <td class="r"><strong>R$ ${F2(catRec)}</strong></td>
+            <td class="r">${totRec>0?F2(catRec/totRec*100):'0'}%</td>
+            <td></td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+  });
+
+  // Gráfico de barras horizontal por prato (top 10)
+  const todosOrdenados = [];
+  cats.forEach(cat => cat.pratos.forEach(p => {
+    todosOrdenados.push({ nome: p.nome, rec: p.pv * p.mv, cu: calcCusto(p), cmvP: p.pv>0?calcCusto(p)/p.pv:0 });
+  }));
+  todosOrdenados.sort((a,b) => b.rec - a.rec);
+  const maxRec = todosOrdenados[0]?.rec || 1;
+  const topBars = todosOrdenados.slice(0,10).map(d => `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:200px;font-size:11px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nome}</div>
+      <div style="flex:1;background:#f0ece6;border-radius:4px;height:22px;position:relative">
+        <div style="position:absolute;left:0;top:0;height:100%;border-radius:4px;background:${d.cmvP<=0.26?'#c9a84c':'#c0392b'};width:${d.rec/maxRec*100}%"></div>
+        <div style="position:absolute;left:8px;top:3px;font-size:11px;font-weight:600;color:#fff;z-index:1">R$ ${F2(d.rec)}</div>
+      </div>
+      <span class="badge ${cmvCls(d.cmvP)}" style="min-width:55px;text-align:center">${FP(d.cmvP)}</span>
+    </div>`).join('');
+
+  document.getElementById('cat-cons').innerHTML = `
+    <!-- RESUMO GLOBAL -->
+    <div style="background:var(--cor-primaria);border-radius:10px;padding:20px 24px;margin-bottom:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px">
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Pratos no Cardápio</div>
+        <div style="font-size:28px;font-weight:700;color:var(--cor-accent)">${cats.reduce((s,c)=>s+c.pratos.length,0)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Receita Est./mês</div>
+        <div style="font-size:28px;font-weight:700;color:var(--cor-accent)">R$ ${F2(totRec)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Custo Est./mês</div>
+        <div style="font-size:28px;font-weight:700;color:#ddd">R$ ${F2(totCusto)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Lucro Bruto/mês</div>
+        <div style="font-size:28px;font-weight:700;color:#2ecc71">R$ ${F2(totRec-totCusto)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">CMV Ponderado</div>
+        <div style="font-size:28px;font-weight:700" class="${cmvCls(cmvGlobal)}">${FP(cmvGlobal)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:1px">Total Porções/mês</div>
+        <div style="font-size:28px;font-weight:700;color:#ddd">${totPorcoes}</div>
+      </div>
+    </div>
+
+    <!-- TOP 10 POR RECEITA -->
+    <div style="background:#fff;border-radius:10px;padding:20px 24px;box-shadow:var(--sombra);margin-bottom:24px">
+      <div style="font-size:13px;font-weight:700;color:#2c1810;margin-bottom:14px">🏆 Top 10 Pratos por Receita Estimada/mês <span style="font-size:10px;font-weight:400;color:#888">(🟡 CMV ≤26% · 🔴 CMV >26%)</span></div>
+      ${topBars}
+    </div>
+
+    <!-- TODAS AS CATEGORIAS -->
+    ${secoes}`;
+}
+
+renderAbaConsolidado();
 </script>
 </body>
 </html>
