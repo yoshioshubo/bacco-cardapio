@@ -422,6 +422,18 @@ let precos = {
   'Mostarda Dijon':      {p:25.00, u:'kg'},
   'Manteiga de Garrafa': {p:40.00, u:'L'},
   'Ervilha':             {p:12.00, u:'kg'},
+  // Sobremesas
+  'Sorvete de Creme':    {p:35.00, u:'kg'},
+  'Ganache de Chocolate':{p:28.00, u:'kg'},
+  'Carolina (un)':       {p: 1.50, u:'un'},
+  'Leite Condensado':    {p:15.00, u:'kg'},
+  'Açúcar':              {p: 5.00, u:'kg'},
+  'Baunilha':            {p:120.00,u:'kg'},
+  'Chocolate Meio Amargo':{p:38.00,u:'kg'},
+  'Amêndoas Assadas':    {p:45.00, u:'kg'},
+  'Gema de Ovo':         {p: 0.80, u:'un'},
+  'Nescafé':             {p:80.00, u:'kg'},
+  'Caramelo (açúcar)':   {p: 5.00, u:'kg'},
 };
 
 // ================================================================
@@ -757,6 +769,67 @@ const cats = [
         {n:'Brócolis',          q:0.080},
         {n:'Azeite Extravirgem',q:0.030},
       ], pv:55.00, mv:42 },
+  ]},
+
+  // ── SOBREMESAS ─────────────────────────────────────────────────
+  { nome:'SOBREMESAS', sub:'Finalizações da Casa', pratos:[
+
+    { id:'creme-brulee', nome:'Crème Brûlée',
+      desc:'Creme aveludado de baunilha com crosta de açúcar caramelizado no maçarico',
+      // Ficha técnica — base CREME BRULEE (rende 33 un): gemas 33un, creme de leite fresco 2kg,
+      // açúcar 275g, leite 400ml, baunilha 10g. Custo batch ÷ 33 porções + açúcar finalização.
+      prep:'Bater o açúcar com as gemas até obter um creme claro. Ferver o creme de leite com o leite, açúcar e baunilha. Agregar a fervura ao creme batido. Dispor nas formas individuais. Assar em banho-maria por 80 minutos a 140°C. Gelar. Na hora do serviço, polvilhar açúcar e queimar com maçarico até formar a crosta caramelizada.',
+      ings:[
+        {n:'Gema de Ovo',          q:1},       // 1 gema/porção (batch 33 un)
+        {n:'Creme de Leite',       q:0.061},   // 2kg ÷ 33
+        {n:'Leite Integral',       q:0.012},   // 400ml ÷ 33
+        {n:'Açúcar',               q:0.017},   // 275g ÷ 33 + 10g finalization
+        {n:'Baunilha',             q:0.0003},  // 10g ÷ 33
+        {n:'Caramelo (açúcar)',    q:0.010},   // açúcar para queimar no maçarico
+      ], pv:32.00, mv:55 },
+
+    { id:'profiteroles', nome:'Profiteroles com Ganache',
+      desc:'5 carolinas com 2 bolas de sorvete de creme e ganache de chocolate quente',
+      // Ficha técnica — PROFITEROLES: sorvete 200g, carolinas 5 UND, calda chocolate 150g
+      prep:'Montar a sobremesa em uma taça com 2 bolas de sorvete de creme e as carolinas ao redor. Aquecer a ganache de chocolate em banho-maria até consistência de calda. Despejar a ganache quente sobre as carolinas e o sorvete na hora do serviço.',
+      ings:[
+        {n:'Carolina (un)',        q:5},       // 5 carolinas
+        {n:'Sorvete de Creme',     q:0.200},   // 2 bolas = 200g
+        {n:'Ganache de Chocolate', q:0.150},   // 150g calda quente
+      ], pv:42.00, mv:48 },
+
+    { id:'petit-gateau', nome:'Petit Gâteau com Sorvete',
+      desc:'Bolinho de chocolate quente com centro derretido, sorvete de creme e amêndoas',
+      // Ficha técnica — PETIT GATEAU (rende 15 un): chocolate 500g, gemas 10un, ovos 10un,
+      // manteiga 500g, açúcar 320g, farinha 240g, nescafé 1g.
+      // Montagem (SOBREMESA): petit gateau 1un, sorvete 100g, calda chocolate 20g, amêndoas 20g.
+      prep:'Derreter o chocolate com a manteiga em banho-maria. Adicionar o nescafé. Na batedeira, bater açúcar com gemas e ovos até obter creme. Adicionar a farinha de trigo aos poucos e incorporar a mistura do chocolate. Porcionar em forminhas untadas. Refrigerar. Assar por 8 minutos a 250°C. Montar com sorvete de creme, amêndoas torradas e ganache.',
+      ings:[
+        {n:'Chocolate Meio Amargo',q:0.033},   // 500g ÷ 15
+        {n:'Gema de Ovo',          q:1},       // ~0.67un arredondado
+        {n:'Ovo',                  q:1},       // ~0.67un arredondado
+        {n:'Manteiga',             q:0.033},   // 500g ÷ 15
+        {n:'Açúcar',               q:0.021},   // 320g ÷ 15
+        {n:'Farinha de Trigo',     q:0.016},   // 240g ÷ 15
+        {n:'Nescafé',              q:0.0001},
+        {n:'Sorvete de Creme',     q:0.100},   // 1 bola
+        {n:'Ganache de Chocolate', q:0.020},
+        {n:'Amêndoas Assadas',     q:0.020},
+      ], pv:42.00, mv:50 },
+
+    { id:'pudim-leite', nome:'Pudim de Leite',
+      desc:'Pudim de leite condensado com calda de caramelo — clássico da casa',
+      // Ficha técnica — PUDIM (rende ~6 porções): leite 1L, creme leite fresco 100g,
+      // ovos 6un, leite condensado 700g, açúcar 500g (inclui caramelo)
+      prep:'Bater todos os ingredientes no liquidificador. Deixar descansar por 10 minutos. Fazer o caramelo com o açúcar e preencher as formas. Colocar a mistura nas formas caramelizadas. Assar em banho-maria por 60 minutos a 170°C. Desenformar gelado e servir com a calda de caramelo.',
+      ings:[
+        {n:'Leite Integral',       q:0.167},   // 1L ÷ 6 porções
+        {n:'Creme de Leite',       q:0.017},   // 100g ÷ 6
+        {n:'Ovo',                  q:1},       // 6 ovos ÷ 6 = 1/porção
+        {n:'Leite Condensado',     q:0.117},   // 700g ÷ 6
+        {n:'Caramelo (açúcar)',    q:0.083},   // 500g ÷ 6
+      ], pv:28.00, mv:55 },
+
   ]},
 ];
 
