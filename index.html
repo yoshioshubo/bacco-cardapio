@@ -262,6 +262,7 @@ async function verificarSenha(){
   <div class="logo">BACCO<span>Restaurante & Bar — Engenharia de Menu</span></div>
   <div class="header-right">
     <button class="btn-header" onclick="abrirPrecos()">⚙ Preços de Compra</button>
+    <button class="btn-header" onclick="desbloquearTodos()" style="background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.5);color:#c9a84c" title="Remove todas as travas manuais e recalcula o mix">🔓 Desbloquear Todos</button>
     <button class="btn-header" onclick="exportarExcel()" style="background:rgba(39,174,96,0.25);border-color:rgba(39,174,96,0.6);color:#2ecc71">⬇ Exportar Excel</button>
     <button class="btn-accent" onclick="abrirBalancear()">⚖ Balancear Mix</button>
   </div>
@@ -953,6 +954,8 @@ function render(){
       const cmv = p.pv>0 ? cu/p.pv : 0;
       const mg  = p.pv - cu;
       const recEst = p.pv * p.mv;
+      const locked = !!p.mvLocked;
+      const lockStyle = locked ? 'border-color:#c9a84c;color:#c9a84c;font-weight:800;' : '';
       h+=`<tr>
         <td>
           <div class="nm" onclick="abrirFicha('${p.id}')">${p.nome}</div>
@@ -964,9 +967,16 @@ function render(){
           oninput="atuPV('${p.id}',this.value)"></td>
         <td class="r"><span class="badge ${cmvCls(cmv)}" id="bc-${p.id}">${FP(cmv)}</span></td>
         <td class="r hide-mob" id="mg-${p.id}">R$ ${F2(mg)}</td>
-        <td class="r"><input type="number" class="n meta" id="mv-${p.id}"
-          value="${p.mv}" step="1" min="0"
-          oninput="atuMV('${p.id}',this.value)"></td>
+        <td class="r">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px">
+            <input type="number" class="n meta" id="mv-${p.id}"
+              value="${p.mv}" step="1" min="0" style="${lockStyle}"
+              oninput="lockManual('${p.id}',this.value)">
+            <button id="lb-${p.id}" onclick="toggleLock('${p.id}')"
+              title="${locked?'Clique para desbloquear e recalcular':'Clique para fixar este valor'}"
+              style="background:none;border:none;cursor:pointer;font-size:13px;padding:0;line-height:1;opacity:${locked?1:0.3}">${locked?'🔒':'🔓'}</button>
+          </div>
+        </td>
         <td class="r hide-mob" id="re-${p.id}">R$ ${F2(recEst)}</td>
         <td><button class="btn-ft" onclick="abrirFicha('${p.id}')">Ficha</button></td>
       </tr>`;
@@ -1009,13 +1019,53 @@ function atuPV(id, val){
   recalcRodapesCats();
 }
 function atuMV(id, val){
-  const p = pratoById(id);
-  if(!p) return;
+  const p = pratoById(id); if(!p) return;
   p.mv = parseInt(val)||0;
   const re = document.getElementById('re-'+id);
   if(re) re.textContent = 'R$ '+F2(p.pv*p.mv);
-  atualizarResumo();
-  recalcRodapesCats();
+  atualizarResumo(); recalcRodapesCats();
+}
+
+// ── SISTEMA DE TRAVAS ──────────────────────────────────────────
+function lockManual(id, val){
+  const p = pratoById(id); if(!p) return;
+  p.mv = Math.max(0, parseInt(val)||0);
+  p.mvLocked = true;
+  // Visual: dourado = travado
+  const inp = document.getElementById('mv-'+id);
+  const btn = document.getElementById('lb-'+id);
+  if(inp){ inp.style.borderColor='#c9a84c'; inp.style.color='#c9a84c'; inp.style.fontWeight='800'; }
+  if(btn){ btn.textContent='🔒'; btn.style.opacity='1'; btn.title='Clique para desbloquear'; }
+  const re = document.getElementById('re-'+id);
+  if(re) re.textContent = 'R$ '+F2(p.pv*p.mv);
+  // Recalcular os demais para compensar
+  aplicarMetaGlobal();
+}
+
+function toggleLock(id){
+  const p = pratoById(id); if(!p) return;
+  p.mvLocked = !p.mvLocked;
+  const inp = document.getElementById('mv-'+id);
+  const btn = document.getElementById('lb-'+id);
+  if(p.mvLocked){
+    if(inp){ inp.style.borderColor='#c9a84c'; inp.style.color='#c9a84c'; inp.style.fontWeight='800'; }
+    if(btn){ btn.textContent='🔒'; btn.style.opacity='1'; btn.title='Clique para desbloquear'; }
+  } else {
+    if(inp){ inp.style.borderColor=''; inp.style.color=''; inp.style.fontWeight=''; }
+    if(btn){ btn.textContent='🔓'; btn.style.opacity='0.3'; btn.title='Clique para fixar'; }
+    aplicarMetaGlobal();
+  }
+}
+
+function desbloquearTodos(){
+  cats.forEach(c=>c.pratos.forEach(p=>{
+    p.mvLocked=false;
+    const inp=document.getElementById('mv-'+p.id);
+    const btn=document.getElementById('lb-'+p.id);
+    if(inp){ inp.style.borderColor=''; inp.style.color=''; inp.style.fontWeight=''; }
+    if(btn){ btn.textContent='🔓'; btn.style.opacity='0.3'; }
+  }));
+  aplicarMetaGlobal();
 }
 
 function recalcPrato(id){
@@ -1426,88 +1476,84 @@ function aplicarMetaGlobal(){
 }
 
 function _executarMetaGlobal(){
-  const metaFat  = parseFloat(document.getElementById('meta-fat-global')?.value)    || 100000;
-  const ticketM  = parseFloat(document.getElementById('meta-ticket-global')?.value) || 165;
-  const metaCMV  = parseFloat(document.getElementById('meta-cmv-global')?.value)/100|| 0.25;
+  const metaFat = parseFloat(document.getElementById('meta-fat-global')?.value)    || 100000;
+  const ticketM = parseFloat(document.getElementById('meta-ticket-global')?.value) || 165;
+  const metaCMV = parseFloat(document.getElementById('meta-cmv-global')?.value)/100|| 0.25;
 
-  // ── 1. Pessoas calculadas ──────────────────────────────
-  const pessoas = Math.round(metaFat / ticketM);
+  // ── 1. Pessoas ────────────────────────────────────────
+  const pessoas = Math.max(1, Math.round(metaFat / ticketM));
   const elPes = document.getElementById('pessoas-calc');
   if(elPes) elPes.textContent = pessoas.toLocaleString('pt-BR');
 
-  // ── 2. Distribuição inicial por categoria × Pareto ─────
-  // Para cada categoria: total_porcoes = pessoas × ratio
-  // Dentro da categoria: Pareto — itens com menor CMV recebem proporcionalmente mais
-  const qtdBase = {}; // pratoId → quantidade base
+  // ── 2. Receita já comprometida pelos itens travados ───
+  let recTravada = 0;
+  cats.forEach(c=>c.pratos.forEach(p=>{ if(p.mvLocked) recTravada += p.pv*p.mv; }));
+  const metaLivre = metaFat - recTravada;
 
-  cats.forEach(cat => {
+  // ── 3. Distribuição Pareto para itens NÃO travados ────
+  const qtdBase = {};
+  cats.forEach(cat=>{
     const ratio    = CAT_RATIO[cat.nome] ?? 0.20;
     const totalCat = Math.max(cat.pratos.length, Math.round(pessoas * ratio));
+    const livres   = cat.pratos.filter(p=>!p.mvLocked);
+    if(livres.length===0) return;
 
-    // CMV de cada prato na categoria
-    const cmvList = cat.pratos.map(p => p.pv > 0 ? calcCusto(p)/p.pv : 0.25);
-    const avgCmv  = cmvList.reduce((s,c)=>s+c,0) / cmvList.length || 0.25;
-
-    // Peso Pareto: itens com CMV abaixo da média recebem mais; acima recebem menos
-    // Fórmula: w = max(0.15, 1 + 2.5×(avgCmv - cmv_i)/avgCmv)
-    const pesos   = cmvList.map(cmv => Math.max(0.15, 1 + 2.5*(avgCmv-cmv)/avgCmv));
-    const somaP   = pesos.reduce((s,w)=>s+w, 0);
-
-    cat.pratos.forEach((p, i) => {
-      qtdBase[p.id] = Math.max(1, Math.round(totalCat * pesos[i] / somaP));
+    const cmvs  = livres.map(p=>p.pv>0?calcCusto(p)/p.pv:0.25);
+    const avgC  = cmvs.reduce((s,c)=>s+c,0)/cmvs.length || 0.25;
+    // Pareto: w = max(0.1, 1 + 2.5×(avg-cmv)/avg)
+    const pesos = cmvs.map(cmv=>Math.max(0.1, 1+2.5*(avgC-cmv)/avgC));
+    const somaP = pesos.reduce((s,w)=>s+w,0);
+    livres.forEach((p,i)=>{
+      qtdBase[p.id] = Math.max(1, Math.round(totalCat * pesos[i]/somaP));
     });
   });
 
-  // ── 3. Receita com as quantidades base ─────────────────
-  let recBase = 0;
-  cats.forEach(c => c.pratos.forEach(p => { recBase += p.pv * qtdBase[p.id]; }));
-  if(recBase <= 0) return;
+  // ── 4. Receita base dos itens livres ──────────────────
+  let recBaseL = 0;
+  cats.forEach(c=>c.pratos.forEach(p=>{ if(!p.mvLocked) recBaseL += p.pv*(qtdBase[p.id]||1); }));
+  if(recBaseL<=0) return;
 
-  // ── 4. Escalar para bater exatamente metaFat ──────────
-  const scale = metaFat / recBase;
+  // ── 5. Fator de escala para bater metaLivre ───────────
+  const scale = metaLivre / recBaseL;
 
-  // ── 5. Ajustar CMV com busca binária (alpha) ───────────
-  let alpha=0, lo=-3, hi=8;
-  for(let i=0;i<80;i++){
-    alpha=(lo+hi)/2;
-    let tR=0,tC=0;
-    cats.forEach(c=>c.pratos.forEach(p=>{
-      const cmv=p.pv>0?calcCusto(p)/p.pv:0;
-      const adj=Math.max(0.1, 1+alpha*(metaCMV-cmv)/(metaCMV||0.25));
-      const n=Math.max(1,Math.round(qtdBase[p.id]*scale*adj));
-      tR+=p.pv*n; tC+=calcCusto(p)*n;
-    }));
-    if(tR>0&&tC/tR>metaCMV) hi=alpha; else lo=alpha;
-  }
-
-  // ── 6. Aplicar quantidades finais ─────────────────────
+  // ── 6. Aplicar ────────────────────────────────────────
   let totRev=0, totCost=0, totN=0;
   cats.forEach(c=>c.pratos.forEach(p=>{
-    const cmv=p.pv>0?calcCusto(p)/p.pv:0;
-    const adj=Math.max(0.1, 1+alpha*(metaCMV-cmv)/(metaCMV||0.25));
-    const n=Math.max(1,Math.round(qtdBase[p.id]*scale*adj));
-    p.mv=n;
-    totRev +=p.pv*n; totCost+=calcCusto(p)*n; totN+=n;
-    const inp=document.getElementById('mv-'+p.id);
-    if(inp) inp.value=n;
+    let n;
+    if(p.mvLocked){
+      n = p.mv; // respeitar trava
+    } else {
+      n = Math.max(1, Math.round((qtdBase[p.id]||1) * scale));
+      p.mv = n;
+      // Atualizar input sem disparar lockManual
+      const inp = document.getElementById('mv-'+p.id);
+      if(inp) inp.value = n;
+    }
+    totRev  += p.pv*n;
+    totCost += calcCusto(p)*n;
+    totN    += n;
+    const re = document.getElementById('re-'+p.id);
+    if(re) re.textContent = 'R$ '+F2(p.pv*n);
   }));
 
   recalcTudo(); atualizarResumo(); recalcRodapesCats();
   if(document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
   if(document.getElementById('cat-meta')?.classList.contains('ativo')) calcularMeta();
 
-  // Feedback
-  const cmvFinal=totRev>0?totCost/totRev:0;
-  const el=document.getElementById('meta-status');
+  // ── 7. Feedback ───────────────────────────────────────
+  const cmvFinal = totRev>0?totCost/totRev:0;
+  const diffPct  = ((totRev-metaFat)/metaFat*100);
+  const nTrav    = cats.reduce((s,c)=>s+c.pratos.filter(p=>p.mvLocked).length,0);
+  const el = document.getElementById('meta-status');
   if(el){
-    const diff=((totRev-metaFat)/metaFat*100).toFixed(1);
-    el.textContent=`✅ ${pessoas} pessoas · ${totN} porções · CMV ${FP(cmvFinal)} · Δfat ${diff>0?'+':''}${diff}%`;
-    el.style.color=Math.abs(totRev-metaFat)<metaFat*0.03?'#2ecc71':'#e67e22';
-    setTimeout(()=>{ if(el){ el.textContent='↵ recalcula ao digitar'; el.style.color='#aaa'; }},6000);
+    const travInfo = nTrav>0 ? ` · 🔒 ${nTrav} fixados` : '';
+    el.textContent = `✅ ${pessoas} pessoas · ${totN} porções · CMV ${FP(cmvFinal)}${travInfo} · Δ${diffPct>0?'+':''}${diffPct.toFixed(1)}%`;
+    el.style.color = Math.abs(diffPct)<3 ? '#2ecc71' : '#e67e22';
+    setTimeout(()=>{ if(el){ el.textContent='↵ recalcula ao digitar'; el.style.color='#aaa'; }},7000);
   }
 }
 
-function atuTicketAlvo(){ /* mantido para compatibilidade */ }
+function atuTicketAlvo(){ /* compatibilidade */ }
 
 // ================================================================
 // EXPORTAR EXCEL
