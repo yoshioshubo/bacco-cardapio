@@ -254,12 +254,15 @@ async function verificarSenha(){
 })();
 // ────────────────────────────────────────────────────────
 </script>
+<!-- SheetJS para exportação Excel -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <!-- ═══════════════════════════════════════════════════════ -->
 
 <header>
   <div class="logo">BACCO<span>Restaurante & Bar — Engenharia de Menu</span></div>
   <div class="header-right">
     <button class="btn-header" onclick="abrirPrecos()">⚙ Preços de Compra</button>
+    <button class="btn-header" onclick="exportarExcel()" style="background:rgba(39,174,96,0.25);border-color:rgba(39,174,96,0.6);color:#2ecc71">⬇ Exportar Excel</button>
     <button class="btn-accent" onclick="abrirBalancear()">⚖ Balancear Mix</button>
   </div>
 </header>
@@ -1470,6 +1473,172 @@ function _executarMetaGlobal() {
     el.style.color = diffRec < targetRev * 0.02 ? '#2ecc71' : '#e67e22';
     setTimeout(() => { if(el){ el.textContent = '↵ recalcula ao digitar'; el.style.color='#aaa'; }}, 5000);
   }
+}
+
+// ================================================================
+// EXPORTAR EXCEL
+// ================================================================
+function exportarExcel(){
+  if(typeof XLSX === 'undefined'){
+    alert('Biblioteca de exportação ainda carregando. Tente em 2 segundos.');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── ABA 1: CARDÁPIO COMPLETO ────────────────────────────
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const metaFat   = parseFloat(document.getElementById('meta-fat-global')?.value)||100000;
+  const metaPes   = parseFloat(document.getElementById('meta-pessoas-global')?.value)||625;
+  const metaCMV   = parseFloat(document.getElementById('meta-cmv-global')?.value)||25;
+  const ticketAlvo = metaFat/metaPes;
+
+  // Cabeçalho informativo
+  const info = [
+    ['BACCO — Cardápio & Engenharia de Menu'],
+    [`Exportado em: ${hoje}`],
+    [`Meta Faturamento: R$ ${F2(metaFat)}   |   Pessoas/mês: ${metaPes}   |   Ticket Alvo: R$ ${F2(ticketAlvo)}   |   CMV Máx.: ${metaCMV}%`],
+    [],
+  ];
+
+  // Cabeçalhos da tabela
+  const headers = [
+    'Categoria',
+    'Prato',
+    'Descrição',
+    'Custo / Porção (R$)',
+    'Preço de Venda (R$)',
+    'CMV (%)',
+    'Margem de Contribuição (R$)',
+    'Meta Porções/mês',
+    'Receita Est./mês (R$)',
+    'Custo Est./mês (R$)',
+    'Margem Est./mês (R$)',
+  ];
+
+  const linhas = [];
+  let totRecGlobal=0, totCuGlobal=0, totNGlobal=0;
+
+  cats.forEach(cat => {
+    let primeiroCat = true;
+    let catRec=0, catCu=0, catN=0;
+
+    cat.pratos.forEach(p => {
+      const cu    = calcCusto(p);
+      const cmvP  = p.pv > 0 ? cu / p.pv : 0;
+      const mg    = p.pv - cu;
+      const recM  = p.pv * p.mv;
+      const cuM   = cu  * p.mv;
+      const mgM   = recM - cuM;
+      catRec += recM; catCu += cuM; catN += p.mv;
+      totRecGlobal += recM; totCuGlobal += cuM; totNGlobal += p.mv;
+
+      linhas.push([
+        primeiroCat ? cat.nome : '',   // categoria só na 1ª linha
+        p.nome,
+        p.desc,
+        parseFloat(cu.toFixed(2)),
+        parseFloat(p.pv.toFixed(2)),
+        parseFloat((cmvP*100).toFixed(2)),
+        parseFloat(mg.toFixed(2)),
+        p.mv,
+        parseFloat(recM.toFixed(2)),
+        parseFloat(cuM.toFixed(2)),
+        parseFloat(mgM.toFixed(2)),
+      ]);
+      primeiroCat = false;
+    });
+
+    // Subtotal da categoria
+    const catCmv = catRec > 0 ? catCu/catRec : 0;
+    linhas.push([
+      `SUBTOTAL — ${cat.nome}`, '',  '',  '',  '',
+      parseFloat((catCmv*100).toFixed(2)),
+      parseFloat((catRec-catCu).toFixed(2)),
+      catN,
+      parseFloat(catRec.toFixed(2)),
+      parseFloat(catCu.toFixed(2)),
+      parseFloat((catRec-catCu).toFixed(2)),
+    ]);
+    linhas.push([]); // linha em branco entre categorias
+  });
+
+  // Totais globais
+  const cmvG = totRecGlobal > 0 ? totCuGlobal/totRecGlobal : 0;
+  linhas.push([
+    'TOTAL GERAL', '', '', '', '',
+    parseFloat((cmvG*100).toFixed(2)),
+    parseFloat((totRecGlobal-totCuGlobal).toFixed(2)),
+    totNGlobal,
+    parseFloat(totRecGlobal.toFixed(2)),
+    parseFloat(totCuGlobal.toFixed(2)),
+    parseFloat((totRecGlobal-totCuGlobal).toFixed(2)),
+  ]);
+
+  const wsData = [...info, headers, ...linhas];
+  const ws1 = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Larguras das colunas
+  ws1['!cols'] = [
+    {wch:30},{wch:32},{wch:45},{wch:18},{wch:18},
+    {wch:10},{wch:22},{wch:16},{wch:20},{wch:18},{wch:22}
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws1, 'Cardápio Completo');
+
+  // ── ABA 2: RESUMO POR CATEGORIA ────────────────────────
+  const resCabec = [
+    ['BACCO — Resumo por Categoria'],
+    [`Meta: R$ ${F2(metaFat)} | Pessoas: ${metaPes} | Ticket Alvo: R$ ${F2(ticketAlvo)}`],
+    [],
+    ['Categoria','Qtde Pratos','CMV Ponderado (%)','Receita Est./mês (R$)','Custo Est./mês (R$)','Margem de Contribuição (R$)','% da Receita Total'],
+  ];
+  const resLinhas = [];
+  let totRr=0;
+  cats.forEach(c=>{ cats.forEach(cc=>{ totRr+=cc.pratos.reduce((s,p)=>s+p.pv*p.mv,0); }); });
+  // recalcular corretamente
+  totRr=0;
+  cats.forEach(c=>c.pratos.forEach(p=>{ totRr+=p.pv*p.mv; }));
+
+  cats.forEach(cat=>{
+    let cr=0,cc2=0;
+    cat.pratos.forEach(p=>{ const cu=calcCusto(p); cr+=p.pv*p.mv; cc2+=cu*p.mv; });
+    const cmvC=cr>0?cc2/cr:0;
+    resLinhas.push([
+      cat.nome,
+      cat.pratos.length,
+      parseFloat((cmvC*100).toFixed(2)),
+      parseFloat(cr.toFixed(2)),
+      parseFloat(cc2.toFixed(2)),
+      parseFloat((cr-cc2).toFixed(2)),
+      parseFloat((totRr>0?cr/totRr*100:0).toFixed(1)),
+    ]);
+  });
+  resLinhas.push([]);
+  resLinhas.push([
+    'TOTAL GERAL',
+    cats.reduce((s,c)=>s+c.pratos.length,0),
+    parseFloat((cmvG*100).toFixed(2)),
+    parseFloat(totRecGlobal.toFixed(2)),
+    parseFloat(totCuGlobal.toFixed(2)),
+    parseFloat((totRecGlobal-totCuGlobal).toFixed(2)),
+    100,
+  ]);
+
+  const ws2 = XLSX.utils.aoa_to_sheet([...resCabec,...resLinhas]);
+  ws2['!cols']=[{wch:32},{wch:12},{wch:18},{wch:20},{wch:18},{wch:26},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumo por Categoria');
+
+  // ── ABA 3: PREÇOS DE INGREDIENTES ─────────────────────
+  const ingCabec = [['Ingrediente','Unidade','Preço de Compra (R$)']];
+  const ingLinhas = Object.entries(precos).map(([n,v])=>[n, v.u, parseFloat(v.p.toFixed(2))]);
+  const ws3 = XLSX.utils.aoa_to_sheet([...ingCabec,...ingLinhas]);
+  ws3['!cols']=[{wch:30},{wch:10},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Preços de Ingredientes');
+
+  // ── DOWNLOAD ────────────────────────────────────────────
+  const nomeArq = `BACCO_Cardapio_${hoje.replace(/\//g,'-')}.xlsx`;
+  XLSX.writeFile(wb, nomeArq);
 }
 
 // INIT — renderiza o cardápio; a meta é aplicada por _iniciarApp() após autenticação
