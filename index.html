@@ -215,6 +215,14 @@ async function sha256(str){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+function _iniciarApp(){
+  // Chamado após autenticação — aplica a meta de faturamento
+  document.body.style.overflow = '';
+  if(typeof _guardarMixBase === 'function') _guardarMixBase();
+  if(typeof _executarMetaGlobal === 'function') setTimeout(_executarMetaGlobal, 100);
+  if(typeof atuTicketAlvo === 'function') atuTicketAlvo();
+}
+
 async function verificarSenha(){
   const inp   = document.getElementById('senha-input');
   const erro  = document.getElementById('senha-erro');
@@ -225,6 +233,7 @@ async function verificarSenha(){
   if(hash === HASH_CORRETO){
     sessionStorage.setItem(SESSAO_KEY,'1');
     document.getElementById('tela-senha').classList.add('oculto');
+    _iniciarApp();
   } else {
     erro.textContent='Senha incorreta. Tente novamente.';
     inp.value='';
@@ -236,12 +245,10 @@ async function verificarSenha(){
 (async()=>{
   if(sessionStorage.getItem(SESSAO_KEY)==='1'){
     document.getElementById('tela-senha').classList.add('oculto');
+    // Sessão já ativa — aplicar meta após o app terminar de renderizar
+    window.addEventListener('load', () => setTimeout(_iniciarApp, 200));
   } else {
-    // Bloquear scroll do conteúdo enquanto tela está ativa
     document.body.style.overflow='hidden';
-    document.getElementById('tela-senha').addEventListener('transitionend',()=>{
-      document.body.style.overflow='';
-    });
     setTimeout(()=>document.getElementById('senha-input').focus(),100);
   }
 })();
@@ -1465,11 +1472,9 @@ function _executarMetaGlobal() {
   }
 }
 
-// INIT
+// INIT — renderiza o cardápio; a meta é aplicada por _iniciarApp() após autenticação
 render();
-_guardarMixBase();   // salva proporções originais ANTES de qualquer cálculo
-atuTicketAlvo();
-setTimeout(() => _executarMetaGlobal(), 200);
+_guardarMixBase();
 
 // ================================================================
 // ABA META DE FATURAMENTO
