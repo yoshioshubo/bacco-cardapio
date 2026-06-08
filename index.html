@@ -270,23 +270,23 @@ async function verificarSenha(){
 <!-- BARRA DE META — sempre visível -->
 <div style="background:#1a0e09;border-bottom:2px solid var(--cor-accent);padding:10px 28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
 
-  <!-- BLOCO METAS -->
-  <div style="display:flex;align-items:center;gap:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:8px 14px;flex-wrap:wrap;gap:8px">
+  <!-- INPUTS -->
+  <div style="display:flex;align-items:center;gap:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.4);border-radius:8px;padding:8px 14px;gap:10px">
     <span style="font-size:10px;color:#c9a84c;font-weight:700;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">🎯 Metas</span>
     <span style="color:#444;font-size:16px">|</span>
 
     <div style="display:flex;flex-direction:column;align-items:center">
       <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">Faturamento R$</span>
       <input id="meta-fat-global" type="number" value="100000" step="5000" min="10000"
-        style="width:110px;background:transparent;border:none;border-bottom:2px solid var(--cor-accent);color:#fff;font-size:19px;font-weight:800;text-align:center;outline:none;padding:1px 2px;"
-        oninput="aplicarMetaGlobal();atuTicketAlvo()">
+        style="width:108px;background:transparent;border:none;border-bottom:2px solid var(--cor-accent);color:#fff;font-size:19px;font-weight:800;text-align:center;outline:none;padding:1px 2px;"
+        oninput="aplicarMetaGlobal()">
     </div>
 
     <div style="display:flex;flex-direction:column;align-items:center">
-      <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">Pessoas/mês</span>
-      <input id="meta-pessoas-global" type="number" value="625" step="25" min="1"
+      <span style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px">Ticket Médio R$</span>
+      <input id="meta-ticket-global" type="number" value="165" step="5" min="10"
         style="width:72px;background:transparent;border:none;border-bottom:2px solid #6a9;color:#fff;font-size:19px;font-weight:800;text-align:center;outline:none;padding:1px 2px;"
-        oninput="atuTicketAlvo()">
+        oninput="aplicarMetaGlobal()">
     </div>
 
     <div style="display:flex;flex-direction:column;align-items:center">
@@ -296,9 +296,11 @@ async function verificarSenha(){
         oninput="aplicarMetaGlobal()">
     </div>
 
-    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(201,168,76,0.15);border-radius:6px;padding:4px 10px;">
-      <span style="font-size:9px;color:#c9a84c;text-transform:uppercase;letter-spacing:.5px">Ticket Alvo</span>
-      <span id="ticket-alvo-display" style="font-size:19px;font-weight:800;color:#c9a84c">R$ 160</span>
+    <span style="color:#444;font-size:16px">→</span>
+
+    <div style="display:flex;flex-direction:column;align-items:center;background:rgba(106,180,120,0.15);border-radius:6px;padding:4px 10px;">
+      <span style="font-size:9px;color:#6ab478;text-transform:uppercase;letter-spacing:.5px">Pessoas/mês</span>
+      <span id="pessoas-calc" style="font-size:19px;font-weight:800;color:#6ab478">606</span>
     </div>
 
     <div id="meta-status" style="font-size:10px;color:#aaa;white-space:nowrap;align-self:center">↵ recalcula ao digitar</div>
@@ -306,18 +308,10 @@ async function verificarSenha(){
 
   <div class="resumo-sep"></div>
   <div class="resumo-item">
-    <div class="lbl">CMV Atual (mix)</div>
+    <div class="lbl">CMV Ponderado</div>
     <div class="val" id="cmv-pond">—</div>
   </div>
   <div class="resumo-sep"></div>
-  <div class="resumo-item">
-    <div class="lbl">Receita Est./mês</div>
-    <div class="val" id="rec-total" style="color:#ddd">—</div>
-  </div>
-  <div class="resumo-item">
-    <div class="lbl">Custo Est./mês</div>
-    <div class="val" id="cus-total" style="color:#ddd">—</div>
-  </div>
   <div class="resumo-item">
     <div class="lbl">Margem de Contribuição/mês</div>
     <div class="val" id="luc-total" style="color:#2ecc71">—</div>
@@ -331,6 +325,10 @@ async function verificarSenha(){
     <div class="lbl">Ticket Médio Real</div>
     <div class="val" id="ticket-med" style="color:#ddd">—</div>
   </div>
+  <!-- IDs mantidos para compatibilidade com funções que os referenciam -->
+  <span id="rec-total" style="display:none"></span>
+  <span id="cus-total" style="display:none"></span>
+  <span id="ticket-alvo-display" style="display:none"></span>
 </div>
 <div class="alerta-cmv" id="alerta-cmv">
   ⚠ CMV ponderado acima da meta — ajuste a meta ou os preços de venda.
@@ -902,9 +900,11 @@ function atualizarResumo(){
   document.getElementById('cus-total').textContent = FR(totCusto);
   document.getElementById('luc-total').textContent = FR(totRec-totCusto);
   document.getElementById('porcoes-total').textContent = totPorcoes.toLocaleString('pt-BR');
-  // Ticket médio real = receita / pessoas definidas
-  const pessoas = parseFloat(document.getElementById('meta-pessoas-global')?.value)||1;
-  document.getElementById('ticket-med').textContent = FR(totRec/pessoas);
+  // Ticket médio real = receita / pessoas calculadas (fat/ticket)
+  const metaFatR  = parseFloat(document.getElementById('meta-fat-global')?.value)||100000;
+  const ticketMR  = parseFloat(document.getElementById('meta-ticket-global')?.value)||165;
+  const pessoasR  = Math.round(metaFatR/ticketMR)||1;
+  document.getElementById('ticket-med').textContent = FR(totRec/pessoasR);
   const al = document.getElementById('alerta-cmv');
   al.classList.toggle('visivel', cmvP>0.255);
 }
@@ -1248,9 +1248,9 @@ function salvarPrecos(){
 // ================================================================
 function abrirBalancear(){
   const targetRev    = parseFloat(document.getElementById('meta-fat-global')?.value)    || 100000;
-  const targetPessoas= parseFloat(document.getElementById('meta-pessoas-global')?.value)|| 625;
+  const ticketAlvo   = parseFloat(document.getElementById('meta-ticket-global')?.value) || 165;
+  const targetPessoas= Math.round(targetRev / ticketAlvo);
   const targetCMV    = parseFloat(document.getElementById('meta-cmv-global')?.value)/100|| 0.25;
-  const ticketAlvo   = targetRev / targetPessoas;
 
   // ── CALCULAR MIX BALANCEADO ──────────────────────────────────
   // Receita atual
@@ -1402,78 +1402,112 @@ function fecharOverlay(id){ document.getElementById(id).classList.remove('aberto
 });
 
 // ================================================================
-// META GLOBAL — escala sempre a partir do mix BASE (mv0)
+// META GLOBAL — Distribuição por Pareto + Regra de Pessoas
 // ================================================================
 let _metaTimer = null;
+function _guardarMixBase(){ cats.forEach(c=>c.pratos.forEach(p=>{ p.mv0=p.mv; })); }
 
-// Guarda os valores originais de mv para nunca perder a proporção base
-function _guardarMixBase() {
-  cats.forEach(c => c.pratos.forEach(p => { p.mv0 = p.mv; }));
-}
+// Participação por categoria (% de pessoas que pedirão itens desta categoria)
+const CAT_RATIO = {
+  'ENTRADAS & PETISCOS':                 0.45, // compartilhado, ~2 pessoas/pedido
+  'ENTRADAS FRIAS & CARNES':             0.22,
+  'PRATOS PRINCIPAIS':                   0.33,
+  'COZINHA REGIONAL MINEIRA':            0.19,
+  'PRATOS INDIVIDUAIS & CONTEMPORÂNEOS': 0.25,
+  'GRELHADOS':                           0.18,
+  'SOBREMESAS':                          0.15, // só 15% pedem sobremesa
+};
 
-function aplicarMetaGlobal() {
+function aplicarMetaGlobal(){
   clearTimeout(_metaTimer);
-  const el = document.getElementById('meta-status');
-  if(el){ el.textContent = '⏳ calculando...'; el.style.color = '#e67e22'; }
-  _metaTimer = setTimeout(() => _executarMetaGlobal(), 500);
+  const el=document.getElementById('meta-status');
+  if(el){ el.textContent='⏳ calculando...'; el.style.color='#e67e22'; }
+  _metaTimer=setTimeout(()=>_executarMetaGlobal(),500);
 }
 
-function _executarMetaGlobal() {
-  const targetRev = parseFloat(document.getElementById('meta-fat-global')?.value) || 100000;
-  const targetCMV = parseFloat(document.getElementById('meta-cmv-global')?.value) / 100 || 0.25;
+function _executarMetaGlobal(){
+  const metaFat  = parseFloat(document.getElementById('meta-fat-global')?.value)    || 100000;
+  const ticketM  = parseFloat(document.getElementById('meta-ticket-global')?.value) || 165;
+  const metaCMV  = parseFloat(document.getElementById('meta-cmv-global')?.value)/100|| 0.25;
 
-  // ── Sempre escalar a partir do mix BASE (mv0), nunca do mv modificado ──
+  // ── 1. Pessoas calculadas ──────────────────────────────
+  const pessoas = Math.round(metaFat / ticketM);
+  const elPes = document.getElementById('pessoas-calc');
+  if(elPes) elPes.textContent = pessoas.toLocaleString('pt-BR');
+
+  // ── 2. Distribuição inicial por categoria × Pareto ─────
+  // Para cada categoria: total_porcoes = pessoas × ratio
+  // Dentro da categoria: Pareto — itens com menor CMV recebem proporcionalmente mais
+  const qtdBase = {}; // pratoId → quantidade base
+
+  cats.forEach(cat => {
+    const ratio    = CAT_RATIO[cat.nome] ?? 0.20;
+    const totalCat = Math.max(cat.pratos.length, Math.round(pessoas * ratio));
+
+    // CMV de cada prato na categoria
+    const cmvList = cat.pratos.map(p => p.pv > 0 ? calcCusto(p)/p.pv : 0.25);
+    const avgCmv  = cmvList.reduce((s,c)=>s+c,0) / cmvList.length || 0.25;
+
+    // Peso Pareto: itens com CMV abaixo da média recebem mais; acima recebem menos
+    // Fórmula: w = max(0.15, 1 + 2.5×(avgCmv - cmv_i)/avgCmv)
+    const pesos   = cmvList.map(cmv => Math.max(0.15, 1 + 2.5*(avgCmv-cmv)/avgCmv));
+    const somaP   = pesos.reduce((s,w)=>s+w, 0);
+
+    cat.pratos.forEach((p, i) => {
+      qtdBase[p.id] = Math.max(1, Math.round(totalCat * pesos[i] / somaP));
+    });
+  });
+
+  // ── 3. Receita com as quantidades base ─────────────────
   let recBase = 0;
-  cats.forEach(c => c.pratos.forEach(p => { recBase += p.pv * (p.mv0 || p.mv); }));
-  if (recBase <= 0) return;
+  cats.forEach(c => c.pratos.forEach(p => { recBase += p.pv * qtdBase[p.id]; }));
+  if(recBase <= 0) return;
 
-  const scale = targetRev / recBase;
+  // ── 4. Escalar para bater exatamente metaFat ──────────
+  const scale = metaFat / recBase;
 
-  // Busca binária para alpha que atinge CMV-alvo
-  let alpha = 0, lo = -3, hi = 8;
-  for (let i = 0; i < 80; i++) {
-    alpha = (lo + hi) / 2;
-    let tR = 0, tC = 0;
-    cats.forEach(c => c.pratos.forEach(p => {
-      const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
-      const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
-      const base = p.mv0 || p.mv;
-      const n = Math.max(1, Math.round(base * scale * adj));
-      tR += p.pv * n; tC += calcCusto(p) * n;
+  // ── 5. Ajustar CMV com busca binária (alpha) ───────────
+  let alpha=0, lo=-3, hi=8;
+  for(let i=0;i<80;i++){
+    alpha=(lo+hi)/2;
+    let tR=0,tC=0;
+    cats.forEach(c=>c.pratos.forEach(p=>{
+      const cmv=p.pv>0?calcCusto(p)/p.pv:0;
+      const adj=Math.max(0.1, 1+alpha*(metaCMV-cmv)/(metaCMV||0.25));
+      const n=Math.max(1,Math.round(qtdBase[p.id]*scale*adj));
+      tR+=p.pv*n; tC+=calcCusto(p)*n;
     }));
-    if (tR > 0 && tC / tR > targetCMV) hi = alpha; else lo = alpha;
+    if(tR>0&&tC/tR>metaCMV) hi=alpha; else lo=alpha;
   }
 
-  // Aplicar
-  let totRev = 0, totCost = 0, totN = 0;
-  cats.forEach(c => c.pratos.forEach(p => {
-    const cmv = p.pv > 0 ? calcCusto(p) / p.pv : 0;
-    const adj = Math.max(0.05, 1 + alpha * (targetCMV - cmv) / (targetCMV || 0.25));
-    const base = p.mv0 || p.mv;
-    const n = Math.max(1, Math.round(base * scale * adj));
-    p.mv = n;
-    totRev  += p.pv * n;
-    totCost += calcCusto(p) * n;
-    totN    += n;
-    const inp = document.getElementById('mv-' + p.id);
-    if (inp) inp.value = n;
+  // ── 6. Aplicar quantidades finais ─────────────────────
+  let totRev=0, totCost=0, totN=0;
+  cats.forEach(c=>c.pratos.forEach(p=>{
+    const cmv=p.pv>0?calcCusto(p)/p.pv:0;
+    const adj=Math.max(0.1, 1+alpha*(metaCMV-cmv)/(metaCMV||0.25));
+    const n=Math.max(1,Math.round(qtdBase[p.id]*scale*adj));
+    p.mv=n;
+    totRev +=p.pv*n; totCost+=calcCusto(p)*n; totN+=n;
+    const inp=document.getElementById('mv-'+p.id);
+    if(inp) inp.value=n;
   }));
 
-  recalcTudo();
-  atualizarResumo();
-  recalcRodapesCats();
-  if (document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
-  if (document.getElementById('cat-meta')?.classList.contains('ativo')) calcularMeta();
+  recalcTudo(); atualizarResumo(); recalcRodapesCats();
+  if(document.getElementById('cat-cons')?.classList.contains('ativo')) renderConsolidado();
+  if(document.getElementById('cat-meta')?.classList.contains('ativo')) calcularMeta();
 
-  const cmvFinal = totRev > 0 ? totCost / totRev : 0;
-  const diffRec  = Math.abs(totRev - targetRev);
-  const el = document.getElementById('meta-status');
-  if (el) {
-    el.textContent = `✅ R$ ${F2(totRev)} · CMV ${FP(cmvFinal)} · ${totN} porções`;
-    el.style.color = diffRec < targetRev * 0.02 ? '#2ecc71' : '#e67e22';
-    setTimeout(() => { if(el){ el.textContent = '↵ recalcula ao digitar'; el.style.color='#aaa'; }}, 5000);
+  // Feedback
+  const cmvFinal=totRev>0?totCost/totRev:0;
+  const el=document.getElementById('meta-status');
+  if(el){
+    const diff=((totRev-metaFat)/metaFat*100).toFixed(1);
+    el.textContent=`✅ ${pessoas} pessoas · ${totN} porções · CMV ${FP(cmvFinal)} · Δfat ${diff>0?'+':''}${diff}%`;
+    el.style.color=Math.abs(totRev-metaFat)<metaFat*0.03?'#2ecc71':'#e67e22';
+    setTimeout(()=>{ if(el){ el.textContent='↵ recalcula ao digitar'; el.style.color='#aaa'; }},6000);
   }
 }
+
+function atuTicketAlvo(){ /* mantido para compatibilidade */ }
 
 // ================================================================
 // EXPORTAR EXCEL
